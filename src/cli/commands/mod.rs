@@ -2,6 +2,7 @@
 
 mod download;
 mod providers;
+mod scrape;
 mod search;
 
 use crate::cli::args::{Args, Command};
@@ -15,6 +16,9 @@ pub async fn execute(args: Args) -> Result<()> {
         }
         Command::Download(download_args) => {
             download::execute(download_args, args.quiet).await
+        }
+        Command::Scrape(scrape_args) => {
+            scrape::execute(scrape_args, args.format, args.quiet).await
         }
         Command::Providers(provider_args) => {
             providers::execute(provider_args, args.format).await

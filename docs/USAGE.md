@@ -12,6 +12,7 @@
 - [CLI Commands](#cli-commands)
   - [Search](#search-command)
   - [Download](#download-command)
+  - [Scrape](#scrape-command)
   - [Providers](#providers-command)
   - [Config](#config-command)
 - [Library Usage](#library-usage)
@@ -204,6 +205,55 @@ dx download abc123 --provider unsplash
 
 # Download to specific directory
 dx download xyz789 --provider pexels --output ./assets
+```
+
+---
+
+### Scrape Command
+
+Scrape and download media from any website. **No API key required!**
+
+```bash
+dx scrape <URL> [OPTIONS]
+```
+
+#### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--output <DIR>` | `-o` | Download directory | `.` |
+| `--type <TYPE>` | `-t` | Media type filter | `image` |
+| `--count <N>` | `-n` | Maximum assets to find | `20` |
+| `--depth <N>` | `-d` | Link-following depth (0 = only URL) | `0` |
+| `--pattern <GLOB>` | `-p` | File pattern to match (e.g., `*.jpg`) | All |
+| `--dry-run` | | Preview without downloading | false |
+
+#### Examples
+
+```bash
+# Scrape images from a website
+dx scrape "https://example.com"
+
+# Scrape and save to directory
+dx scrape "https://blog.example.com" --output ./scraped-images
+
+# Preview what would be downloaded
+dx scrape "https://example.com" --dry-run
+
+# Scrape only JPG files
+dx scrape "https://example.com" --pattern "*.jpg"
+
+# Limit to 10 images
+dx scrape "https://example.com" --count 10
+
+# Scrape videos
+dx scrape "https://example.com" --type video
+
+# Follow links one level deep
+dx scrape "https://example.com" --depth 1
+
+# Output as JSON
+dx scrape "https://example.com" --dry-run --format json
 ```
 
 ---

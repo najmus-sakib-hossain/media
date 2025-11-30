@@ -42,6 +42,10 @@ pub enum Command {
     #[command(alias = "d")]
     Download(DownloadArgs),
 
+    /// Scrape media from a website.
+    #[command(alias = "sc")]
+    Scrape(ScrapeArgs),
+
     /// List available providers.
     #[command(alias = "p")]
     Providers(ProvidersArgs),
@@ -116,6 +120,38 @@ pub struct DownloadArgs {
     /// Custom filename.
     #[arg(short, long)]
     pub filename: Option<String>,
+}
+
+/// Arguments for the scrape command.
+#[derive(Debug, Parser)]
+pub struct ScrapeArgs {
+    /// URL to scrape media from.
+    #[arg(required = true)]
+    pub url: String,
+
+    /// Output directory for downloaded files.
+    #[arg(short, long, default_value = ".")]
+    pub output: String,
+
+    /// Media type filter.
+    #[arg(short = 't', long, value_enum, default_value = "image")]
+    pub media_type: MediaTypeArg,
+
+    /// Maximum number of assets to find.
+    #[arg(short = 'n', long, default_value = "20")]
+    pub count: usize,
+
+    /// Depth of links to follow (0 = only the given URL).
+    #[arg(short, long, default_value = "0")]
+    pub depth: usize,
+
+    /// File pattern to match (e.g., "*.jpg").
+    #[arg(short = 'p', long)]
+    pub pattern: Option<String>,
+
+    /// Only show found media, don't download.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 /// Arguments for the providers command.

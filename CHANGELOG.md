@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `--color` filter for dominant color
     - `--download` flag to auto-download first result
   - `dx download <provider:id>` - Download specific asset
+  - `dx scrape <url>` - Scrape and download media from any website
+    - `--type` filter (image, video, audio, gif, vector, all)
+    - `--count` limit for number of assets
+    - `--depth` for link-following depth
+    - `--pattern` for file pattern matching
+    - `--dry-run` to preview without downloading
   - `dx providers` - List available providers and their status
   - `dx config` - Show current configuration
   - Multiple output formats: text, json, json-compact, tsv
@@ -66,11 +72,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Video provider implementations (Pexels Videos, Coverr, Mixkit)
 - Audio provider implementations (Freesound, Jamendo)
 - Caching layer for search results
-- Progress bars for downloads
 - Batch download with concurrency control
 - Interactive TUI mode (ratatui)
 - Format conversion (image/video/audio)
-- Web scraper mode for arbitrary URLs
 
 ---
 

@@ -51,6 +51,19 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::map_unwrap_or)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::if_not_else)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::unused_async)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::elidable_lifetime_names)]
+#![allow(clippy::assigning_clones)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::trim_split_whitespace)]
+#![allow(clippy::double_ended_iterator_last)]
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MODULE DECLARATIONS
@@ -76,7 +89,7 @@ pub use error::{DxError, Result};
 pub use types::{License, MediaAsset, MediaType, SearchQuery, SearchResult};
 
 // Re-export engine components
-pub use engine::{Downloader, FileManager, SearchEngine};
+pub use engine::{Downloader, FileManager, Scraper, ScrapeOptions, ScrapeResult, SearchEngine};
 
 // Re-export providers
 pub use providers::{PexelsProvider, PixabayProvider, ProviderRegistry, UnsplashProvider};

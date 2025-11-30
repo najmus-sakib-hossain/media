@@ -6,9 +6,11 @@
 mod download;
 mod dx;
 mod filemanager;
+mod scraper;
 mod search;
 
 pub use download::Downloader;
 pub use dx::DxMedia;
 pub use filemanager::FileManager;
+pub use scraper::{Scraper, ScrapeOptions, ScrapeResult};
 pub use search::SearchEngine;
