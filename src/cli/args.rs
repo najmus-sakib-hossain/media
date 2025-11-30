@@ -77,6 +77,14 @@ pub struct SearchArgs {
     #[arg(short = 'P', long, value_delimiter = ',')]
     pub providers: Vec<String>,
 
+    /// Image orientation filter.
+    #[arg(long, value_enum)]
+    pub orientation: Option<OrientationArg>,
+
+    /// Filter by dominant color (e.g., "red", "blue", "orange").
+    #[arg(long)]
+    pub color: Option<String>,
+
     /// Automatically download the first result.
     #[arg(long)]
     pub download: bool,
@@ -152,6 +160,27 @@ impl From<MediaTypeArg> for Option<crate::types::MediaType> {
     }
 }
 
+/// Orientation filter argument.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum OrientationArg {
+    /// Landscape (wider than tall).
+    Landscape,
+    /// Portrait (taller than wide).
+    Portrait,
+    /// Square (equal dimensions).
+    Square,
+}
+
+impl From<OrientationArg> for crate::types::Orientation {
+    fn from(arg: OrientationArg) -> Self {
+        match arg {
+            OrientationArg::Landscape => crate::types::Orientation::Landscape,
+            OrientationArg::Portrait => crate::types::Orientation::Portrait,
+            OrientationArg::Square => crate::types::Orientation::Square,
+        }
+    }
+}
+
 /// Output format.
 #[derive(Debug, Clone, Copy, Default, ValueEnum)]
 pub enum OutputFormat {
@@ -186,6 +215,8 @@ mod tests {
             count: 10,
             page: 1,
             providers: vec![],
+            orientation: None,
+            color: None,
             download: false,
             output: None,
         };

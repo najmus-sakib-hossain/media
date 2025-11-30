@@ -2,13 +2,26 @@
 name = "dx-media"
 version = "0.1.0"
 edition = "2024"
-authors = ["DX Team"]
+rust-version = "1.85"
+authors = ["DX Team <hello@dx-media.dev>"]
 description = "Universal digital asset acquisition engine - One command, any media, from anywhere"
 license = "MIT"
 repository = "https://github.com/anthropics/dx-media"
+homepage = "https://github.com/anthropics/dx-media"
+documentation = "https://docs.rs/dx-media"
 keywords = ["media", "assets", "download", "cli", "api"]
 categories = ["command-line-utilities", "multimedia", "web-programming"]
 readme = "README.md"
+exclude = [
+    "target/",
+    ".git/",
+    ".github/",
+    ".env",
+    "*.log",
+    "test_*",
+    "cache/",
+    "temp/",
+]
 
 [[bin]]
 name = "dx"

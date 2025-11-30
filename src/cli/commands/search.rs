@@ -19,6 +19,8 @@ pub async fn execute(args: SearchArgs, format: OutputFormat, quiet: bool) -> Res
     query.page = args.page;
     query.media_type = args.media_type.and_then(Into::into);
     query.providers = args.providers.clone();
+    query.orientation = args.orientation.map(Into::into);
+    query.color = args.color.clone();
 
     // Show progress indicator
     let spinner = if !quiet && matches!(format, OutputFormat::Text) {
