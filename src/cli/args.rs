@@ -1,0 +1,195 @@
+//! Command-line argument parsing.
+
+use clap::{Parser, Subcommand, ValueEnum};
+
+/// DX Media - Universal digital asset acquisition CLI.
+#[derive(Debug, Parser)]
+#[command(
+    name = "dx",
+    version,
+    author,
+    about = "Universal digital asset acquisition from 50+ free APIs",
+    long_about = "DX Media is a powerful CLI tool for searching and downloading \
+                  royalty-free media assets from multiple providers including \
+                  Unsplash, Pexels, Pixabay, and more."
+)]
+pub struct Args {
+    /// Subcommand to execute.
+    #[command(subcommand)]
+    pub command: Command,
+
+    /// Output format.
+    #[arg(short, long, global = true, default_value = "text")]
+    pub format: OutputFormat,
+
+    /// Enable verbose output.
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
+
+    /// Suppress all output except errors.
+    #[arg(short, long, global = true)]
+    pub quiet: bool,
+}
+
+/// Available commands.
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    /// Search for media assets.
+    #[command(alias = "s")]
+    Search(SearchArgs),
+
+    /// Download a media asset by ID.
+    #[command(alias = "d")]
+    Download(DownloadArgs),
+
+    /// List available providers.
+    #[command(alias = "p")]
+    Providers(ProvidersArgs),
+
+    /// Show configuration information.
+    Config,
+
+    /// Interactive mode (TUI).
+    #[command(alias = "i")]
+    Interactive,
+}
+
+/// Arguments for the search command.
+#[derive(Debug, Parser)]
+pub struct SearchArgs {
+    /// Search query terms.
+    #[arg(required = true)]
+    pub query: Vec<String>,
+
+    /// Media type filter.
+    #[arg(short = 't', long, value_enum)]
+    pub media_type: Option<MediaTypeArg>,
+
+    /// Number of results to return.
+    #[arg(short = 'n', long, default_value = "10")]
+    pub count: usize,
+
+    /// Page number for pagination.
+    #[arg(short, long, default_value = "1")]
+    pub page: usize,
+
+    /// Specific providers to search (comma-separated).
+    #[arg(short = 'P', long, value_delimiter = ',')]
+    pub providers: Vec<String>,
+
+    /// Automatically download the first result.
+    #[arg(long)]
+    pub download: bool,
+
+    /// Output directory for downloads.
+    #[arg(short, long)]
+    pub output: Option<String>,
+}
+
+impl SearchArgs {
+    /// Get the search query as a single string.
+    #[must_use]
+    pub fn query_string(&self) -> String {
+        self.query.join(" ")
+    }
+}
+
+/// Arguments for the download command.
+#[derive(Debug, Parser)]
+pub struct DownloadArgs {
+    /// Asset ID to download (format: provider:id).
+    #[arg(required = true)]
+    pub asset_id: String,
+
+    /// Output directory.
+    #[arg(short, long)]
+    pub output: Option<String>,
+
+    /// Custom filename.
+    #[arg(short, long)]
+    pub filename: Option<String>,
+}
+
+/// Arguments for the providers command.
+#[derive(Debug, Parser)]
+pub struct ProvidersArgs {
+    /// Show only available providers.
+    #[arg(short, long)]
+    pub available: bool,
+
+    /// Show detailed information.
+    #[arg(short, long)]
+    pub detailed: bool,
+}
+
+/// Media type argument.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum MediaTypeArg {
+    /// Images (photos, illustrations).
+    Image,
+    /// Videos.
+    Video,
+    /// Audio files.
+    Audio,
+    /// Animated GIFs.
+    Gif,
+    /// Vector graphics (SVG).
+    Vector,
+    /// All types.
+    All,
+}
+
+impl From<MediaTypeArg> for Option<crate::types::MediaType> {
+    fn from(arg: MediaTypeArg) -> Self {
+        match arg {
+            MediaTypeArg::Image => Some(crate::types::MediaType::Image),
+            MediaTypeArg::Video => Some(crate::types::MediaType::Video),
+            MediaTypeArg::Audio => Some(crate::types::MediaType::Audio),
+            MediaTypeArg::Gif => Some(crate::types::MediaType::Gif),
+            MediaTypeArg::Vector => Some(crate::types::MediaType::Vector),
+            MediaTypeArg::All => None,
+        }
+    }
+}
+
+/// Output format.
+#[derive(Debug, Clone, Copy, Default, ValueEnum)]
+pub enum OutputFormat {
+    /// Human-readable text output.
+    #[default]
+    Text,
+    /// JSON output.
+    Json,
+    /// Compact JSON (single line).
+    JsonCompact,
+    /// Tab-separated values.
+    Tsv,
+}
+
+impl Args {
+    /// Parse command-line arguments.
+    #[must_use]
+    pub fn parse_args() -> Self {
+        Self::parse()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_search_query_string() {
+        let args = SearchArgs {
+            query: vec!["sunset".to_string(), "mountains".to_string()],
+            media_type: None,
+            count: 10,
+            page: 1,
+            providers: vec![],
+            download: false,
+            output: None,
+        };
+
+        assert_eq!(args.query_string(), "sunset mountains");
+    }
+}
