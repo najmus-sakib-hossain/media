@@ -80,6 +80,11 @@ impl Provider for PexelsProvider {
             });
         };
 
+        // Use video endpoint for video searches
+        if query.media_type == Some(MediaType::Video) {
+            return self.search_videos(api_key, query).await;
+        }
+
         let url = format!("{}/search", self.base_url());
         
         let params = [
@@ -138,6 +143,75 @@ impl Provider for PexelsProvider {
     }
 }
 
+impl PexelsProvider {
+    /// Search for videos using Pexels video API endpoint.
+    async fn search_videos(&self, api_key: &str, query: &SearchQuery) -> Result<SearchResult> {
+        let url = "https://api.pexels.com/videos/search";
+        
+        let params = [
+            ("query", query.query.as_str()),
+            ("page", &query.page.to_string()),
+            ("per_page", &query.count.min(80).to_string()),
+        ];
+
+        let headers = [("Authorization", api_key)];
+
+        let response = self
+            .client
+            .get_with_query(url, &params, &headers)
+            .await?;
+
+        let api_response: PexelsVideoSearchResponse = response.json_or_error().await?;
+
+        let assets: Vec<MediaAsset> = api_response
+            .videos
+            .into_iter()
+            .map(|video| {
+                // Get the best quality video file available (prefer HD)
+                let best_file = video.video_files.iter()
+                    .filter(|f| f.quality == "hd" || f.quality == "sd")
+                    .max_by_key(|f| f.width.unwrap_or(0))
+                    .or_else(|| video.video_files.first());
+
+                let download_url = best_file
+                    .map(|f| f.link.clone())
+                    .unwrap_or_default();
+
+                let (width, height) = best_file
+                    .map(|f| (f.width.unwrap_or(video.width), f.height.unwrap_or(video.height)))
+                    .unwrap_or((video.width, video.height));
+
+                // Use video picture as preview
+                let preview_url = video.video_pictures.first()
+                    .map(|p| p.picture.clone());
+
+                MediaAsset::builder()
+                    .id(video.id.to_string())
+                    .provider("pexels")
+                    .media_type(MediaType::Video)
+                    .title(format!("Pexels Video {}", video.id))
+                    .download_url(download_url)
+                    .preview_url(preview_url.unwrap_or_default())
+                    .source_url(video.url)
+                    .author(video.user.name.clone())
+                    .author_url(video.user.url.clone())
+                    .license(License::Pexels)
+                    .dimensions(width, height)
+                    .build()
+            })
+            .collect();
+
+        Ok(SearchResult {
+            query: query.query.clone(),
+            media_type: query.media_type,
+            total_count: api_response.total_results,
+            assets,
+            providers_searched: vec!["pexels".to_string()],
+            provider_errors: vec![],
+            duration_ms: 0,
+        })
+    }
+}
 impl ProviderInfo for PexelsProvider {
     fn description(&self) -> &'static str {
         "Free stock photos and videos shared by talented creators"
@@ -194,6 +268,60 @@ struct PexelsPhotoSrc {
     portrait: String,
     landscape: String,
     tiny: String,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VIDEO API RESPONSE TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PexelsVideoSearchResponse {
+    total_results: usize,
+    page: usize,
+    per_page: usize,
+    videos: Vec<PexelsVideo>,
+    #[serde(default)]
+    next_page: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PexelsVideo {
+    id: u64,
+    width: u32,
+    height: u32,
+    url: String,
+    duration: u32,
+    user: PexelsVideoUser,
+    video_files: Vec<PexelsVideoFile>,
+    video_pictures: Vec<PexelsVideoPicture>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PexelsVideoUser {
+    id: u64,
+    name: String,
+    url: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PexelsVideoFile {
+    id: u64,
+    quality: String,
+    file_type: String,
+    width: Option<u32>,
+    height: Option<u32>,
+    link: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PexelsVideoPicture {
+    id: u64,
+    picture: String,
 }
 
 #[cfg(test)]

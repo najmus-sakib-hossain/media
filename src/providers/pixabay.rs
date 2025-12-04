@@ -80,6 +80,11 @@ impl Provider for PixabayProvider {
             });
         };
 
+        // Use video endpoint for video searches
+        if query.media_type == Some(MediaType::Video) {
+            return self.search_videos(api_key, query).await;
+        }
+
         let image_type = match query.media_type {
             Some(MediaType::Vector) => "vector",
             Some(MediaType::Image) | None => "all",
@@ -140,6 +145,86 @@ impl Provider for PixabayProvider {
                     .author_url(format!("https://pixabay.com/users/{}-{}/", hit.user, hit.user_id))
                     .license(License::Pixabay)
                     .dimensions(hit.image_width, hit.image_height)
+                    .tags(tags)
+                    .build()
+            })
+            .collect();
+
+        Ok(SearchResult {
+            query: query.query.clone(),
+            media_type: query.media_type,
+            total_count: api_response.total_hits,
+            assets,
+            providers_searched: vec!["pixabay".to_string()],
+            provider_errors: vec![],
+            duration_ms: 0,
+        })
+    }
+}
+
+impl PixabayProvider {
+    /// Search for videos using Pixabay video API endpoint.
+    async fn search_videos(&self, api_key: &str, query: &SearchQuery) -> Result<SearchResult> {
+        let video_url = "https://pixabay.com/api/videos/";
+        
+        let params = [
+            ("key", api_key),
+            ("q", query.query.as_str()),
+            ("page", &query.page.to_string()),
+            ("per_page", &query.count.min(200).to_string()),
+            ("safesearch", "true"),
+        ];
+
+        let response = self
+            .client
+            .get_with_query(video_url, &params, &[])
+            .await?;
+
+        let api_response: PixabayVideoSearchResponse = response.json_or_error().await?;
+
+        let assets: Vec<MediaAsset> = api_response
+            .hits
+            .into_iter()
+            .map(|hit| {
+                let tags: Vec<String> = hit
+                    .tags
+                    .split(", ")
+                    .map(|s| s.trim().to_string())
+                    .collect();
+
+                // Get the best quality video URL available
+                let download_url = hit.videos.large.as_ref()
+                    .or(hit.videos.medium.as_ref())
+                    .or(hit.videos.small.as_ref())
+                    .map(|v| v.url.clone())
+                    .unwrap_or_default();
+
+                let (width, height) = hit.videos.large.as_ref()
+                    .or(hit.videos.medium.as_ref())
+                    .or(hit.videos.small.as_ref())
+                    .map(|v| (v.width, v.height))
+                    .unwrap_or((0, 0));
+
+                // Use tiny video as preview
+                let preview_url = hit.videos.tiny.as_ref()
+                    .map(|v| v.url.clone());
+
+                MediaAsset::builder()
+                    .id(hit.id.to_string())
+                    .provider("pixabay")
+                    .media_type(MediaType::Video)
+                    .title(
+                        tags.first()
+                            .cloned()
+                            .unwrap_or_else(|| format!("Pixabay Video {}", hit.id)),
+                    )
+                    .download_url(download_url)
+                    .preview_url(preview_url.unwrap_or_default())
+                    .source_url(hit.page_url)
+                    .author(hit.user.clone())
+                    .author_url(format!("https://pixabay.com/users/{}-{}/", hit.user, hit.user_id))
+                    .license(License::Pixabay)
+                    .dimensions(width, height)
                     .tags(tags)
                     .build()
             })
@@ -238,6 +323,67 @@ struct PixabayHit {
     
     #[serde(rename = "userImageURL")]
     user_image_url: String,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VIDEO API RESPONSE TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PixabayVideoSearchResponse {
+    total: usize,
+    #[serde(rename = "totalHits")]
+    total_hits: usize,
+    hits: Vec<PixabayVideoHit>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PixabayVideoHit {
+    id: u64,
+    
+    #[serde(rename = "pageURL")]
+    page_url: String,
+    
+    #[serde(rename = "type", default)]
+    hit_type: String,
+    
+    tags: String,
+    
+    duration: u32,
+    
+    videos: PixabayVideoSizes,
+    
+    views: u64,
+    downloads: u64,
+    likes: u64,
+    
+    user: String,
+    
+    #[serde(rename = "user_id")]
+    user_id: u64,
+    
+    #[serde(rename = "userImageURL")]
+    user_image_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PixabayVideoSizes {
+    large: Option<PixabayVideoSize>,
+    medium: Option<PixabayVideoSize>,
+    small: Option<PixabayVideoSize>,
+    tiny: Option<PixabayVideoSize>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PixabayVideoSize {
+    url: String,
+    width: u32,
+    height: u32,
+    size: u64,
 }
 
 #[cfg(test)]
