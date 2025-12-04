@@ -77,6 +77,7 @@ pub mod engine;
 pub mod error;
 pub mod http;
 pub mod providers;
+pub mod scraping;
 pub mod types;
 
 // CLI module (not public - used by binary)
