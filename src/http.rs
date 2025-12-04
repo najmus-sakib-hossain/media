@@ -42,8 +42,15 @@ impl HttpClient {
         max_retries: u32,
         timeout: Duration,
     ) -> Result<Self> {
+        use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, HeaderMap, HeaderValue};
+        
+        let mut headers = HeaderMap::new();
+        headers.insert(ACCEPT, HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"));
+        headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.9"));
+        
         let client = Client::builder()
             .user_agent(USER_AGENT)
+            .default_headers(headers)
             .timeout(timeout)
             .gzip(true)
             .brotli(true)

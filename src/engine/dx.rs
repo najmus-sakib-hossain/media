@@ -250,12 +250,15 @@ mod tests {
         let dx = DxMedia::with_config(config).unwrap();
 
         let all = dx.all_providers();
-        // All 6 FREE providers should be available
+        // Check FREE providers (archive and artic removed)
         assert!(all.contains(&"openverse".to_string()));
         assert!(all.contains(&"wikimedia".to_string()));
         assert!(all.contains(&"nasa".to_string()));
-        assert!(all.contains(&"archive".to_string()));
         assert!(all.contains(&"met".to_string()));
         assert!(all.contains(&"picsum".to_string()));
+        assert!(all.contains(&"cleveland".to_string()));
+        // These were removed
+        assert!(!all.contains(&"archive".to_string()));
+        assert!(!all.contains(&"artic".to_string()));
     }
 }

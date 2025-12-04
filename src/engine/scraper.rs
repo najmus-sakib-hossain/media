@@ -268,7 +268,9 @@ impl Scraper {
            url_lower.contains("thumb") || url_lower.contains("icon") ||
            url_lower.contains("avatar") || url_lower.contains("profile") ||
            url_lower.contains("_s.") || url_lower.contains("_xs.") ||
-           url_lower.contains("_tiny") || url_lower.contains("favicon") {
+           url_lower.contains("_tiny") || url_lower.contains("favicon") ||
+           url_lower.contains("96x96") || url_lower.contains("48x48") ||
+           url_lower.contains("/user/") {  // Pixabay user profile images
             return true;
         }
 
@@ -330,8 +332,10 @@ impl Scraper {
                 }
             }
 
-            // Also check srcset
-            if let Some(srcset) = element.value().attr("srcset") {
+            // Also check srcset (handle both lowercase and camelCase)
+            let srcset = element.value().attr("srcset")
+                .or_else(|| element.value().attr("srcSet"));
+            if let Some(srcset) = srcset {
                 for src in self.parse_srcset(srcset) {
                     if result.assets.len() >= options.max_assets {
                         break;
@@ -663,13 +667,18 @@ mod tests {
     #[test]
     fn test_parse_srcset() {
         let scraper = Scraper::default();
+        // Now returns only images >= 400px and picks the largest
         let srcset = "image-300.jpg 300w, image-600.jpg 600w, image-1200.jpg 1200w";
         let urls = scraper.parse_srcset(srcset);
 
-        assert_eq!(urls.len(), 3);
-        assert_eq!(urls[0], "image-300.jpg");
-        assert_eq!(urls[1], "image-600.jpg");
-        assert_eq!(urls[2], "image-1200.jpg");
+        // Should return only the largest image >= 400px
+        assert_eq!(urls.len(), 1);
+        assert_eq!(urls[0], "image-1200.jpg");
+        
+        // Test with all small images
+        let srcset_small = "tiny-50.jpg 50w, small-100.jpg 100w";
+        let urls_small = scraper.parse_srcset(srcset_small);
+        assert_eq!(urls_small.len(), 0);
     }
 
     #[test]
@@ -697,5 +706,29 @@ mod tests {
         assert!(scraper.matches_pattern("https://example.com/image.jpg", "*.jpg"));
         assert!(scraper.matches_pattern("https://example.com/image.png", "*.png"));
         assert!(!scraper.matches_pattern("https://example.com/image.gif", "*.jpg"));
+    }
+    
+    #[test]
+    fn test_pixabay_regex() {
+        let pattern = r#"https://cdn\.pixabay\.com/photo/\d+/\d+/\d+/\d+/\d+/[a-zA-Z0-9_-]+_(?:1280|1920|640)\.(?:jpe?g|png|webp)"#;
+        let regex = Regex::new(pattern).unwrap();
+        
+        let test_urls = [
+            "https://cdn.pixabay.com/photo/2022/04/15/07/58/sunset-7133867_1280.jpg",
+            "https://cdn.pixabay.com/photo/2022/11/05/19/56/bachalpsee-7572681_1280.jpg",
+        ];
+        
+        for url in &test_urls {
+            assert!(regex.is_match(url), "Pattern should match: {}", url);
+        }
+    }
+    
+    #[test]
+    fn test_istock_regex() {
+        let pattern = r#"https://media\.istockphoto\.com/[^"'\s<>]+\.(?:jpe?g|png|webp)"#;
+        let regex = Regex::new(pattern).unwrap();
+        
+        let test_html = r#"https://media.istockphoto.com/id/2181735944/photo/natural.webp?a=1"#;
+        assert!(regex.is_match(test_html), "Pattern should match iStock URL");
     }
 }
