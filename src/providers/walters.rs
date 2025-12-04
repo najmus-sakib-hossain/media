@@ -186,7 +186,8 @@ mod tests {
         let config = Config::default();
         let provider = WaltersArtMuseumProvider::new(&config);
         assert_eq!(provider.name(), "walters");
-        assert!(provider.is_available());
+        // Disabled due to Cloudflare protection
+        assert!(!provider.is_available());
         assert!(!provider.requires_api_key());
     }
 }

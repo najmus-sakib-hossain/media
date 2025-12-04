@@ -122,11 +122,11 @@ pub struct DownloadArgs {
     pub asset_id: String,
 
     /// Output directory.
-    #[arg(short, long)]
+    #[arg(short = 'd', long)]
     pub output: Option<String>,
 
-    /// Custom filename.
-    #[arg(short, long)]
+    /// Custom filename (without -f since it conflicts with global --format).
+    #[arg(long)]
     pub filename: Option<String>,
 }
 
