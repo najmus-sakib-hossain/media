@@ -128,7 +128,15 @@ pub enum License {
     CcByNc,
     /// Public Domain
     PublicDomain,
-    /// Custom or unspecified license
+    /// Unsplash License (free for commercial use with attribution)
+    Unsplash,
+    /// Pexels License (free for commercial use)
+    Pexels,
+    /// Pixabay License (free for commercial use)
+    Pixabay,
+    /// Custom license with description
+    Custom(String),
+    /// Other or unspecified license
     Other(String),
 }
 
@@ -142,6 +150,10 @@ impl License {
             Self::CcBySa => "CC-BY-SA",
             Self::CcByNc => "CC-BY-NC",
             Self::PublicDomain => "Public Domain",
+            Self::Unsplash => "Unsplash License",
+            Self::Pexels => "Pexels License",
+            Self::Pixabay => "Pixabay License",
+            Self::Custom(s) => s.as_str(),
             Self::Other(s) => s.as_str(),
         }
     }

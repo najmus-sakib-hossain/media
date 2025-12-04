@@ -10,6 +10,22 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub struct Config {
     // ─────────────────────────────────────────────────────────────
+    // API Keys (Optional - providers work without, but unlock premium access)
+    // ─────────────────────────────────────────────────────────────
+    /// Unsplash API key - 5M+ high-quality photos (https://unsplash.com/developers)
+    pub unsplash_api_key: Option<String>,
+    /// Pexels API key - 3.5M+ photos & videos (https://www.pexels.com/api)
+    pub pexels_api_key: Option<String>,
+    /// Pixabay API key - 4.2M+ images, videos, music (https://pixabay.com/api/docs)
+    pub pixabay_api_key: Option<String>,
+    /// Freesound API key - 600K+ sound effects (https://freesound.org/apiv2/apply)
+    pub freesound_api_key: Option<String>,
+    /// Giphy API key - Millions of GIFs (https://developers.giphy.com)
+    pub giphy_api_key: Option<String>,
+    /// Flickr API key - 100M+ images (https://www.flickr.com/services/api)
+    pub flickr_api_key: Option<String>,
+
+    // ─────────────────────────────────────────────────────────────
     // Directory Configuration
     // ─────────────────────────────────────────────────────────────
     /// Directory for downloaded media (also aliased as download_dir).
@@ -57,6 +73,14 @@ impl Config {
         let media_dir = Self::get_path("DX_MEDIA_DIR", "./media");
         
         Ok(Self {
+            // API Keys (all optional - graceful degradation when missing)
+            unsplash_api_key: Self::get_optional_string("UNSPLASH_ACCESS_KEY"),
+            pexels_api_key: Self::get_optional_string("PEXELS_API_KEY"),
+            pixabay_api_key: Self::get_optional_string("PIXABAY_API_KEY"),
+            freesound_api_key: Self::get_optional_string("FREESOUND_API_KEY"),
+            giphy_api_key: Self::get_optional_string("GIPHY_API_KEY"),
+            flickr_api_key: Self::get_optional_string("FLICKR_API_KEY"),
+
             // Directories
             download_dir: media_dir.clone(),
             media_dir,
@@ -80,6 +104,14 @@ impl Config {
     pub fn default_for_testing() -> Self {
         let media_dir = PathBuf::from("./test_media");
         Self {
+            // API keys (none for testing)
+            unsplash_api_key: None,
+            pexels_api_key: None,
+            pixabay_api_key: None,
+            freesound_api_key: None,
+            giphy_api_key: None,
+            flickr_api_key: None,
+
             download_dir: media_dir.clone(),
             media_dir,
             cache_dir: PathBuf::from("./test_cache"),
@@ -129,6 +161,10 @@ impl Config {
             .ok()
             .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1" | "yes"))
             .unwrap_or(default)
+    }
+
+    fn get_optional_string(key: &str) -> Option<String> {
+        env::var(key).ok().filter(|s| !s.is_empty())
     }
 }
 

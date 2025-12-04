@@ -1,6 +1,7 @@
 //! Provider registry for managing all media providers.
 //!
-//! All providers are FREE and require NO API keys.
+//! Supports both FREE providers (no API keys) and PREMIUM providers (optional API keys).
+//! Premium providers gracefully degrade when API keys are not configured.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -9,17 +10,21 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::providers::traits::Provider;
 use crate::providers::{
+    // FREE providers (no API key required)
     InternetArchiveProvider, LoremPicsumProvider,
     MetMuseumProvider, NasaImagesProvider, OpenverseProvider,
     WikimediaCommonsProvider, LibraryOfCongressProvider, EuropeanaProvider,
     DplaProvider, RijksmuseumProvider, ArtInstituteChicagoProvider,
     ClevelandMuseumProvider, PolyHavenProvider,
+    // PREMIUM providers (optional API key - graceful degradation)
+    UnsplashProvider, PexelsProvider, PixabayProvider,
+    FreesoundProvider, GiphyProvider, SmithsonianProvider,
 };
 use crate::types::{MediaType, SearchQuery, SearchResult};
 
 /// Registry for managing and querying media providers.
 /// 
-/// All 13 providers are FREE and require NO API keys:
+/// ## FREE Providers (13) - No API Keys Required - 890M+ Assets
 /// - Openverse: 700M+ images and audio (CC/CC0)
 /// - Wikimedia Commons: 92M+ files
 /// - Europeana: 50M+ European cultural heritage items
@@ -33,6 +38,14 @@ use crate::types::{MediaType, SearchQuery, SearchResult};
 /// - Art Institute Chicago: 50K+ artworks (CC0)
 /// - Poly Haven: 3.7K+ 3D models, textures, HDRIs (CC0)
 /// - Lorem Picsum: Unlimited placeholder images
+///
+/// ## PREMIUM Providers (6) - Optional API Keys - 113M+ Additional Assets
+/// - Unsplash: 5M+ high-quality photos (free API key)
+/// - Pexels: 3.5M+ photos & videos (free API key)
+/// - Pixabay: 4.2M+ images, videos, music (free API key)
+/// - Freesound: 600K+ sound effects (free API key)
+/// - Giphy: Millions of GIFs (free API key)
+/// - Smithsonian: 4.5M+ CC0 images (free API key)
 pub struct ProviderRegistry {
     providers: HashMap<String, Arc<dyn Provider>>,
 }
@@ -114,6 +127,36 @@ impl ProviderRegistry {
         // Lorem Picsum - Unlimited placeholder images (no API key required)
         let picsum = LoremPicsumProvider::new(config);
         providers.insert(picsum.name().to_string(), Arc::new(picsum));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 4: PREMIUM Providers - OPTIONAL API KEY (Graceful Degradation)
+        // These providers are only available when API keys are configured.
+        // Without keys, they simply don't appear in search results.
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // Unsplash - 5M+ high-quality photos (free API key at unsplash.com/developers)
+        let unsplash = UnsplashProvider::new(config);
+        providers.insert(unsplash.name().to_string(), Arc::new(unsplash));
+
+        // Pexels - 3.5M+ photos & videos (free API key at pexels.com/api)
+        let pexels = PexelsProvider::new(config);
+        providers.insert(pexels.name().to_string(), Arc::new(pexels));
+
+        // Pixabay - 4.2M+ images, videos, music (free API key at pixabay.com/api/docs)
+        let pixabay = PixabayProvider::new(config);
+        providers.insert(pixabay.name().to_string(), Arc::new(pixabay));
+
+        // Freesound - 600K+ sound effects (free API key at freesound.org/apiv2/apply)
+        let freesound = FreesoundProvider::new(config);
+        providers.insert(freesound.name().to_string(), Arc::new(freesound));
+
+        // Giphy - Millions of GIFs (free API key at developers.giphy.com)
+        let giphy = GiphyProvider::new(config);
+        providers.insert(giphy.name().to_string(), Arc::new(giphy));
+
+        // Smithsonian - 4.5M+ CC0 images (free API key at api.si.edu)
+        let smithsonian = SmithsonianProvider::new(config);
+        providers.insert(smithsonian.name().to_string(), Arc::new(smithsonian));
 
         Self { providers }
     }
@@ -275,7 +318,7 @@ mod tests {
         let config = Config::default();
         let registry = ProviderRegistry::new(&config);
         
-        // All FREE providers should be registered (no API keys required)
+        // FREE providers should be registered (no API keys required)
         // Tier 1: High-volume providers
         assert!(registry.has_provider("openverse"));
         assert!(registry.has_provider("wikimedia"));
@@ -295,6 +338,14 @@ mod tests {
         assert!(registry.has_provider("polyhaven"));
         assert!(registry.has_provider("picsum"));
         
+        // PREMIUM providers (registered but not available without API keys)
+        assert!(registry.has_provider("unsplash"));
+        assert!(registry.has_provider("pexels"));
+        assert!(registry.has_provider("pixabay"));
+        assert!(registry.has_provider("freesound"));
+        assert!(registry.has_provider("giphy"));
+        assert!(registry.has_provider("smithsonian"));
+        
         assert!(!registry.has_provider("nonexistent"));
     }
 
@@ -304,10 +355,13 @@ mod tests {
         let registry = ProviderRegistry::new(&config);
         
         let stats = registry.stats();
-        // We now have 13 FREE providers (no API keys required)
-        assert_eq!(stats.total, 13);
-        // All providers are available since none require API keys
+        // Total: 13 FREE + 6 PREMIUM = 19 providers
+        assert_eq!(stats.total, 19);
+        // Without API keys, only 13 FREE providers are available
+        // Premium providers gracefully degrade
         assert_eq!(stats.available, 13);
+        // 6 premium providers are unavailable without API keys
+        assert_eq!(stats.unavailable, 6);
     }
 
     #[test]

@@ -33,7 +33,7 @@ impl UnsplashProvider {
         .unwrap_or_default();
 
         Self {
-            api_key: config.unsplash_access_key.clone(),
+            api_key: config.unsplash_api_key.clone(),
             client,
         }
     }

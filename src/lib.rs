@@ -4,8 +4,9 @@
 //!
 //! One command. Any media. From anywhere.
 //!
-//! DX Media provides a unified interface to search and download digital assets
-//! from 13 FREE API providers (no API keys required) with access to 890M+ assets.
+//! DX Media provides a unified interface to search and download digital assets:
+//! - **13 FREE providers** (no API keys) with 890M+ assets
+//! - **6 PREMIUM providers** (optional API keys) with 113M+ additional assets
 //!
 //! ## Quick Start
 //!
@@ -35,12 +36,12 @@
 //!
 //! ## Features
 //!
-//! - **Universal Search**: One query syntax for all FREE providers
+//! - **Universal Search**: One query syntax for all providers
 //! - **Smart Downloads**: Async, parallel, with progress tracking
 //! - **Rate Limiting**: Automatic throttling per provider
 //! - **Dual Mode**: Use as CLI (`dx`) or Rust library
-//! - **No API Keys Required**: All 13 providers work out of the box
-//! - **890M+ Assets**: Massive coverage across images, audio, video, and 3D
+//! - **Graceful Degradation**: Premium providers work when keys are set, invisible otherwise
+//! - **1B+ Assets**: Access to over 1 billion media assets
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
@@ -93,7 +94,7 @@ pub use types::{License, MediaAsset, MediaType, SearchQuery, SearchResult};
 // Re-export engine components
 pub use engine::{Downloader, FileManager, Scraper, ScrapeOptions, ScrapeResult, SearchEngine};
 
-// Re-export providers (13 FREE providers with 890M+ assets - NO API KEYS REQUIRED)
+// Re-export FREE providers (13 providers with 890M+ assets - NO API KEYS REQUIRED)
 pub use providers::{
     // Tier 1: High-volume providers (700M+)
     OpenverseProvider, WikimediaCommonsProvider, EuropeanaProvider, DplaProvider,
@@ -105,6 +106,17 @@ pub use providers::{
     PolyHavenProvider, LoremPicsumProvider,
     // Registry
     ProviderRegistry,
+};
+
+// Re-export PREMIUM providers (6 providers with 113M+ assets - OPTIONAL API KEYS)
+// These gracefully degrade when API keys are not configured
+pub use providers::{
+    UnsplashProvider,    // 5M+ high-quality photos
+    PexelsProvider,      // 3.5M+ photos & videos
+    PixabayProvider,     // 4.2M+ images, videos, music
+    FreesoundProvider,   // 600K+ sound effects
+    GiphyProvider,       // Millions of GIFs
+    SmithsonianProvider, // 4.5M+ CC0 images
 };
 
 /// Library version

@@ -36,7 +36,7 @@ impl FreesoundProvider {
         .unwrap_or_default();
 
         Self {
-            api_key: std::env::var("FREESOUND_API_KEY").ok(),
+            api_key: config.freesound_api_key.clone(),
             client,
         }
     }

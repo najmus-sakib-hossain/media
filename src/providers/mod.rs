@@ -1,9 +1,16 @@
 //! Provider abstraction layer.
 //!
 //! This module defines the [`Provider`] trait and implementations for various
-//! media asset providers. DX Media supports 13 FREE providers (no API keys required)
-//! with access to 800+ million assets.
+//! media asset providers. DX Media supports:
+//! - **13 FREE providers** (no API keys required) with 890M+ assets
+//! - **6 PREMIUM providers** (optional API keys) with 113M+ additional assets
+//!
+//! Premium providers gracefully degrade - they simply don't appear in searches
+//! when API keys are not configured.
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// FREE PROVIDERS (No API Key Required)
+// ═══════════════════════════════════════════════════════════════════════════════
 mod archive;
 mod artic;
 mod cleveland;
@@ -15,13 +22,27 @@ mod nasa;
 mod openverse;
 mod picsum;
 mod polyhaven;
-mod registry;
 mod rijksmuseum;
 mod wikimedia;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PREMIUM PROVIDERS (Optional API Key - Graceful Degradation)
+// ═══════════════════════════════════════════════════════════════════════════════
+mod unsplash;    // 5M+ high-quality photos (free API key)
+mod pexels;      // 3.5M+ photos & videos (free API key)
+mod pixabay;     // 4.2M+ images, videos, music (free API key)
+mod freesound;   // 600K+ sound effects (free API key)
+mod giphy;       // Millions of GIFs (free API key)
+mod smithsonian; // 4.5M+ CC0 images (free API key)
+
+mod registry;
 
 /// Provider traits module.
 pub mod traits;
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUBLIC EXPORTS - FREE PROVIDERS
+// ═══════════════════════════════════════════════════════════════════════════════
 pub use archive::InternetArchiveProvider;
 pub use artic::ArtInstituteChicagoProvider;
 pub use cleveland::ClevelandMuseumProvider;
@@ -33,7 +54,21 @@ pub use nasa::NasaImagesProvider;
 pub use openverse::OpenverseProvider;
 pub use picsum::LoremPicsumProvider;
 pub use polyhaven::PolyHavenProvider;
-pub use registry::ProviderRegistry;
 pub use rijksmuseum::RijksmuseumProvider;
-pub use traits::{Provider, ProviderInfo};
 pub use wikimedia::WikimediaCommonsProvider;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUBLIC EXPORTS - PREMIUM PROVIDERS (Optional API Keys)
+// ═══════════════════════════════════════════════════════════════════════════════
+pub use unsplash::UnsplashProvider;
+pub use pexels::PexelsProvider;
+pub use pixabay::PixabayProvider;
+pub use freesound::FreesoundProvider;
+pub use giphy::GiphyProvider;
+pub use smithsonian::SmithsonianProvider;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REGISTRY & TRAITS
+// ═══════════════════════════════════════════════════════════════════════════════
+pub use registry::ProviderRegistry;
+pub use traits::{Provider, ProviderInfo};
