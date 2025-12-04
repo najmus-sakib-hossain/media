@@ -185,8 +185,13 @@ impl DxMedia {
     /// # }
     /// ```
     pub async fn search_all(&self, query: &str, count_per_source: usize) -> Result<SearchResult> {
-        use std::time::Instant;
+        use std::time::{Instant, Duration};
+        use futures::stream::{FuturesUnordered, StreamExt};
+        
         let start = Instant::now();
+        
+        // Aggressive timeout for scrapers (5 seconds max)
+        let scraper_timeout = Duration::from_secs(5);
 
         // Build search query for providers
         let search_query = SearchQuery::new(query).count(count_per_source);
@@ -197,11 +202,8 @@ impl DxMedia {
         // Define scraping targets (sites that work without Cloudflare protection)
         let scrape_urls = self.get_scrape_search_urls(query);
         
-        // Create futures for provider search
-        let provider_future = self.search_engine.search(&search_query);
-        
-        // Create futures for scraper searches
-        let scrape_futures: Vec<_> = scrape_urls
+        // Create FuturesUnordered for scraper searches with timeouts
+        let mut scrape_futures: FuturesUnordered<_> = scrape_urls
             .into_iter()
             .map(|(name, url)| {
                 let scraper = scraper.clone();
@@ -212,16 +214,39 @@ impl DxMedia {
                     max_assets: count_per_source,
                 };
                 async move {
-                    let result = scraper.scrape(&url, &options).await;
-                    (name, result)
+                    let result = tokio::time::timeout(
+                        scraper_timeout,
+                        scraper.scrape(&url, &options)
+                    ).await;
+                    
+                    match result {
+                        Ok(r) => (name, r),
+                        Err(_) => (name.clone(), Err(crate::error::DxError::ProviderApi {
+                            provider: format!("scraper:{}", name),
+                            message: "Scraper timed out (>5s)".to_string(),
+                            status_code: 408,
+                        })),
+                    }
                 }
             })
             .collect();
 
-        // Execute all searches concurrently
+        // Execute provider search and scraper searches concurrently
+        let provider_future = self.search_engine.search(&search_query);
+        
+        // Start collecting scraper results in parallel
+        let scraper_collector = async {
+            let mut results = Vec::new();
+            while let Some(result) = scrape_futures.next().await {
+                results.push(result);
+            }
+            results
+        };
+
+        // Run both in parallel
         let (provider_result, scrape_results) = tokio::join!(
             provider_future,
-            futures::future::join_all(scrape_futures)
+            scraper_collector
         );
 
         // Start with provider results
@@ -349,15 +374,14 @@ mod tests {
         let dx = DxMedia::with_config(config).unwrap();
 
         let all = dx.all_providers();
-        // Check FREE providers (archive and artic removed)
+        // Check FREE providers
         assert!(all.contains(&"openverse".to_string()));
         assert!(all.contains(&"wikimedia".to_string()));
         assert!(all.contains(&"nasa".to_string()));
         assert!(all.contains(&"met".to_string()));
         assert!(all.contains(&"picsum".to_string()));
         assert!(all.contains(&"cleveland".to_string()));
-        // These were removed
-        assert!(!all.contains(&"archive".to_string()));
-        assert!(!all.contains(&"artic".to_string()));
+        assert!(all.contains(&"artic".to_string())); // Added back
+        assert!(all.contains(&"archive".to_string())); // Registered but unavailable
     }
 }

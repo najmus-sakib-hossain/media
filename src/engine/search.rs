@@ -45,10 +45,16 @@ impl SearchEngine {
         Ok(result)
     }
 
-    /// Search specific providers by name (concurrently).
+    /// Search specific providers by name (concurrently with timeouts).
     async fn search_specific_providers(&self, query: &SearchQuery) -> Result<SearchResult> {
-        // Create futures for all requested provider searches
-        let search_futures: Vec<_> = query
+        use futures::stream::{FuturesUnordered, StreamExt};
+        use std::time::Duration;
+        
+        // Per-provider timeout (8 seconds max)
+        let provider_timeout = Duration::from_secs(8);
+        
+        // Create FuturesUnordered for concurrent execution
+        let mut futures: FuturesUnordered<_> = query
             .providers
             .iter()
             .map(|provider_name| {
@@ -56,22 +62,30 @@ impl SearchEngine {
                 let provider_name = provider_name.clone();
                 let query = query.clone();
                 async move {
-                    let result = registry.search_provider(&provider_name, &query).await;
-                    (provider_name, result)
+                    let result = tokio::time::timeout(
+                        provider_timeout,
+                        registry.search_provider(&provider_name, &query)
+                    ).await;
+                    
+                    match result {
+                        Ok(search_result) => (provider_name, search_result),
+                        Err(_) => (provider_name.clone(), Err(crate::error::DxError::ProviderApi {
+                            provider: provider_name,
+                            message: "Provider timed out (>8s)".to_string(),
+                            status_code: 408,
+                        })),
+                    }
                 }
             })
             .collect();
 
-        // Execute all searches concurrently
-        let results = futures::future::join_all(search_futures).await;
-
-        // Aggregate results
+        // Aggregate results as they complete
         let mut all_assets = Vec::new();
         let mut providers_searched = Vec::new();
         let mut provider_errors = Vec::new();
         let mut total_count = 0;
 
-        for (provider_name, result) in results {
+        while let Some((provider_name, result)) = futures.next().await {
             providers_searched.push(provider_name.clone());
 
             match result {

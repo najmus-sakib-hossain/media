@@ -247,8 +247,13 @@ impl ProviderRegistry {
 
     /// Search all available providers and aggregate results.
     /// 
-    /// This searches all providers **concurrently** for maximum performance.
+    /// This searches all providers **concurrently** with aggressive timeouts.
+    /// Uses `FuturesUnordered` for optimal performance - results are processed
+    /// as they arrive, and slow providers are timed out after 8 seconds.
     pub async fn search_all(&self, query: &SearchQuery) -> Result<SearchResult> {
+        use futures::stream::{FuturesUnordered, StreamExt};
+        use std::time::Duration;
+        
         let providers = match query.media_type {
             Some(media_type) => self.for_media_type(media_type),
             None => self.available(),
@@ -260,30 +265,42 @@ impl ProviderRegistry {
             });
         }
 
-        // Create futures for all provider searches
-        let search_futures: Vec<_> = providers
+        // Per-provider timeout (aggressive - 8 seconds max per provider)
+        let provider_timeout = Duration::from_secs(8);
+
+        // Create a FuturesUnordered for concurrent execution with early returns
+        let mut futures: FuturesUnordered<_> = providers
             .iter()
             .map(|provider| {
                 let provider = Arc::clone(provider);
                 let query = query.clone();
                 async move {
                     let name = provider.name().to_string();
-                    let result = provider.search(&query).await;
-                    (name, result)
+                    // Wrap each provider search in a timeout
+                    let result = tokio::time::timeout(
+                        provider_timeout,
+                        provider.search(&query)
+                    ).await;
+                    
+                    match result {
+                        Ok(search_result) => (name, search_result),
+                        Err(_) => (name.clone(), Err(crate::error::DxError::ProviderApi {
+                            provider: name,
+                            message: "Provider timed out (>8s)".to_string(),
+                            status_code: 408,
+                        })),
+                    }
                 }
             })
             .collect();
 
-        // Execute all searches concurrently
-        let results = futures::future::join_all(search_futures).await;
-
-        // Aggregate results
+        // Collect results as they complete (not waiting for all)
         let mut all_assets = Vec::new();
         let mut providers_searched = Vec::new();
         let mut provider_errors = Vec::new();
         let mut total_count = 0;
 
-        for (provider_name, result) in results {
+        while let Some((provider_name, result)) = futures.next().await {
             providers_searched.push(provider_name.clone());
 
             match result {

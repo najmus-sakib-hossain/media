@@ -237,7 +237,8 @@ mod tests {
         assert_eq!(provider.name(), "archive");
         assert_eq!(provider.display_name(), "Internet Archive");
         assert!(!provider.requires_api_key());
-        assert!(provider.is_available());
+        // Disabled due to slow API - is_available returns false
+        assert!(!provider.is_available());
     }
 
     #[test]
