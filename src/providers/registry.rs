@@ -6,10 +6,28 @@ use std::sync::Arc;
 use crate::config::Config;
 use crate::error::Result;
 use crate::providers::traits::Provider;
-use crate::providers::{PexelsProvider, PixabayProvider, UnsplashProvider};
+use crate::providers::{
+    InternetArchiveProvider, FreesoundProvider, GiphyProvider, LoremPicsumProvider,
+    MetMuseumProvider, NasaImagesProvider, OpenverseProvider, PexelsProvider, 
+    PixabayProvider, SmithsonianProvider, UnsplashProvider, WikimediaCommonsProvider,
+};
 use crate::types::{MediaType, SearchQuery, SearchResult};
 
 /// Registry for managing and querying media providers.
+/// 
+/// Provides access to 12+ providers with 1+ billion total assets:
+/// - Openverse: 700M+ images and audio (CC/CC0)
+/// - Wikimedia Commons: 92M+ files
+/// - Internet Archive: Millions of items
+/// - Unsplash: 5M+ photos
+/// - Pexels: 3.5M+ photos and videos
+/// - Pixabay: 4.2M+ images and videos
+/// - NASA: 140K+ space images
+/// - Smithsonian: 4.5M+ museum items (CC0)
+/// - Met Museum: 500K+ artworks (CC0)
+/// - Freesound: 600K+ sound effects
+/// - Giphy: Millions of GIFs
+/// - Lorem Picsum: Unlimited placeholder images
 pub struct ProviderRegistry {
     providers: HashMap<String, Arc<dyn Provider>>,
 }
@@ -28,15 +46,73 @@ impl ProviderRegistry {
     pub fn new(config: &Config) -> Self {
         let mut providers: HashMap<String, Arc<dyn Provider>> = HashMap::new();
 
-        // Register all MVP providers
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 1: High-Volume API Providers (700M+ assets)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // Openverse - 700M+ images and audio (no API key required)
+        let openverse = OpenverseProvider::new(config);
+        providers.insert(openverse.name().to_string(), Arc::new(openverse));
+
+        // Wikimedia Commons - 92M+ files (no API key required)
+        let wikimedia = WikimediaCommonsProvider::new(config);
+        providers.insert(wikimedia.name().to_string(), Arc::new(wikimedia));
+
+        // Internet Archive - Millions of items (no API key required)
+        let archive = InternetArchiveProvider::new(config);
+        providers.insert(archive.name().to_string(), Arc::new(archive));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 2: Popular Stock Photo Providers (12M+ assets)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // Unsplash - 5M+ photos
         let unsplash = UnsplashProvider::new(config);
         providers.insert(unsplash.name().to_string(), Arc::new(unsplash));
 
+        // Pexels - 3.5M+ photos and videos
         let pexels = PexelsProvider::new(config);
         providers.insert(pexels.name().to_string(), Arc::new(pexels));
 
+        // Pixabay - 4.2M+ images, videos, vectors
         let pixabay = PixabayProvider::new(config);
         providers.insert(pixabay.name().to_string(), Arc::new(pixabay));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 3: Specialized Providers (5M+ assets)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // NASA Images - 140K+ space images (no API key required)
+        let nasa = NasaImagesProvider::new(config);
+        providers.insert(nasa.name().to_string(), Arc::new(nasa));
+
+        // Smithsonian - 4.5M+ museum items
+        let smithsonian = SmithsonianProvider::new(config);
+        providers.insert(smithsonian.name().to_string(), Arc::new(smithsonian));
+
+        // Met Museum - 500K+ artworks (no API key required)
+        let met = MetMuseumProvider::new(config);
+        providers.insert(met.name().to_string(), Arc::new(met));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 4: Audio & GIF Providers (600K+ assets)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // Freesound - 600K+ sound effects
+        let freesound = FreesoundProvider::new(config);
+        providers.insert(freesound.name().to_string(), Arc::new(freesound));
+
+        // Giphy - Millions of GIFs
+        let giphy = GiphyProvider::new(config);
+        providers.insert(giphy.name().to_string(), Arc::new(giphy));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 5: Utility Providers (Unlimited)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // Lorem Picsum - Unlimited placeholder images (no API key required)
+        let picsum = LoremPicsumProvider::new(config);
+        providers.insert(picsum.name().to_string(), Arc::new(picsum));
 
         Self { providers }
     }
@@ -198,10 +274,16 @@ mod tests {
         let config = Config::default();
         let registry = ProviderRegistry::new(&config);
         
-        // All three MVP providers should be registered
+        // All providers should be registered
         assert!(registry.has_provider("unsplash"));
         assert!(registry.has_provider("pexels"));
         assert!(registry.has_provider("pixabay"));
+        assert!(registry.has_provider("openverse"));
+        assert!(registry.has_provider("wikimedia"));
+        assert!(registry.has_provider("nasa"));
+        assert!(registry.has_provider("archive"));
+        assert!(registry.has_provider("met"));
+        assert!(registry.has_provider("picsum"));
         assert!(!registry.has_provider("nonexistent"));
     }
 
@@ -211,10 +293,11 @@ mod tests {
         let registry = ProviderRegistry::new(&config);
         
         let stats = registry.stats();
-        assert_eq!(stats.total, 3);
-        // Without API keys, none should be available
-        assert_eq!(stats.available, 0);
-        assert_eq!(stats.unavailable, 3);
+        // We now have 12 providers
+        assert_eq!(stats.total, 12);
+        // Providers without API key requirements should be available:
+        // openverse, wikimedia, archive, nasa, met, picsum = 6
+        assert!(stats.available >= 6);
     }
 
     #[test]

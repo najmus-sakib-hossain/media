@@ -91,8 +91,13 @@ pub use types::{License, MediaAsset, MediaType, SearchQuery, SearchResult};
 // Re-export engine components
 pub use engine::{Downloader, FileManager, Scraper, ScrapeOptions, ScrapeResult, SearchEngine};
 
-// Re-export providers
-pub use providers::{PexelsProvider, PixabayProvider, ProviderRegistry, UnsplashProvider};
+// Re-export providers (12+ providers with 1+ billion assets)
+pub use providers::{
+    InternetArchiveProvider, FreesoundProvider, GiphyProvider, LoremPicsumProvider,
+    MetMuseumProvider, NasaImagesProvider, OpenverseProvider, PexelsProvider,
+    PixabayProvider, ProviderRegistry, SmithsonianProvider, UnsplashProvider,
+    WikimediaCommonsProvider,
+};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
