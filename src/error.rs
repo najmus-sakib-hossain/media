@@ -49,7 +49,9 @@ pub enum DxError {
     },
 
     /// Rate limit exceeded for a provider.
-    #[error("Rate limit exceeded for provider '{provider}'. Retry after {retry_after_secs} seconds")]
+    #[error(
+        "Rate limit exceeded for provider '{provider}'. Retry after {retry_after_secs} seconds"
+    )]
     RateLimited {
         /// Provider name.
         provider: String,
@@ -189,7 +191,11 @@ impl DxError {
     pub fn is_retryable(&self) -> bool {
         matches!(
             self,
-            Self::RateLimited { .. } | Self::Http { status_code: Some(500..=599), .. }
+            Self::RateLimited { .. }
+                | Self::Http {
+                    status_code: Some(500..=599),
+                    ..
+                }
         )
     }
 }

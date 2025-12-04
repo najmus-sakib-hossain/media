@@ -1,7 +1,7 @@
 //! Europeana provider implementation.
 //!
 //! [Europeana API](https://pro.europeana.eu/page/apis)
-//! 
+//!
 //! Provides access to 50+ million cultural heritage items from European institutions.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Europeana provider for European cultural heritage.
 /// Access to 50M+ images, documents, videos, and audio from European museums and archives.
@@ -64,7 +62,12 @@ impl Provider for EuropeanaProvider {
     }
 
     fn supported_media_types(&self) -> &[MediaType] {
-        &[MediaType::Image, MediaType::Video, MediaType::Audio, MediaType::Document]
+        &[
+            MediaType::Image,
+            MediaType::Video,
+            MediaType::Audio,
+            MediaType::Document,
+        ]
     }
 
     fn requires_api_key(&self) -> bool {
@@ -85,7 +88,7 @@ impl Provider for EuropeanaProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/search.json", self.base_url());
-        
+
         let media_filter = match query.media_type {
             Some(MediaType::Image) => "IMAGE",
             Some(MediaType::Video) => "VIDEO",
@@ -96,7 +99,7 @@ impl Provider for EuropeanaProvider {
 
         let rows = query.count.min(100).to_string();
         let start = ((query.page - 1) * query.count + 1).to_string();
-        
+
         // Europeana has a free tier API key that's publicly documented
         let params = [
             ("query", query.query.as_str()),
@@ -107,10 +110,7 @@ impl Provider for EuropeanaProvider {
             ("wskey", "api2demo"), // Public demo key
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: EuropeanaSearchResponse = response.json_or_error().await?;
 
@@ -120,22 +120,30 @@ impl Provider for EuropeanaProvider {
             .into_iter()
             .filter_map(|item| {
                 let preview = item.edmPreview.as_ref()?.first()?.clone();
-                let download = item.edmIsShownBy.as_ref()
+                let download = item
+                    .edmIsShownBy
+                    .as_ref()
                     .and_then(|v| v.first())
                     .cloned()
                     .unwrap_or_else(|| preview.clone());
-                
-                Some(MediaAsset::builder()
-                    .id(item.id.clone())
-                    .provider("europeana")
-                    .media_type(MediaType::Image)
-                    .title(item.title.as_ref()?.first()?.clone())
-                    .download_url(download)
-                    .preview_url(preview)
-                    .source_url(item.guid.unwrap_or_default())
-                    .author(item.dcCreator.unwrap_or_default().join(", "))
-                    .license(Self::parse_license(item.rights.as_ref().and_then(|v| v.first().map(|s| s.as_str()))))
-                    .build())
+
+                Some(
+                    MediaAsset::builder()
+                        .id(item.id.clone())
+                        .provider("europeana")
+                        .media_type(MediaType::Image)
+                        .title(item.title.as_ref()?.first()?.clone())
+                        .download_url(download)
+                        .preview_url(preview)
+                        .source_url(item.guid.unwrap_or_default())
+                        .author(item.dcCreator.unwrap_or_default().join(", "))
+                        .license(Self::parse_license(
+                            item.rights
+                                .as_ref()
+                                .and_then(|v| v.first().map(|s| s.as_str())),
+                        ))
+                        .build(),
+                )
             })
             .collect();
 
@@ -220,8 +228,21 @@ mod tests {
 
     #[test]
     fn test_license_parsing() {
-        assert!(matches!(EuropeanaProvider::parse_license(Some("http://creativecommons.org/publicdomain/zero/1.0/")), License::Cc0));
-        assert!(matches!(EuropeanaProvider::parse_license(Some("http://creativecommons.org/licenses/by/4.0/")), License::CcBy));
-        assert!(matches!(EuropeanaProvider::parse_license(Some("http://creativecommons.org/licenses/by-sa/4.0/")), License::CcBySa));
+        assert!(matches!(
+            EuropeanaProvider::parse_license(Some(
+                "http://creativecommons.org/publicdomain/zero/1.0/"
+            )),
+            License::Cc0
+        ));
+        assert!(matches!(
+            EuropeanaProvider::parse_license(Some("http://creativecommons.org/licenses/by/4.0/")),
+            License::CcBy
+        ));
+        assert!(matches!(
+            EuropeanaProvider::parse_license(Some(
+                "http://creativecommons.org/licenses/by-sa/4.0/"
+            )),
+            License::CcBySa
+        ));
     }
 }

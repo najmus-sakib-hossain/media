@@ -1,7 +1,7 @@
 //! Art Institute of Chicago provider implementation.
 //!
 //! [Art Institute of Chicago API](https://api.artic.edu/docs)
-//! 
+//!
 //! Provides access to 50,000+ CC0 licensed artworks from the Art Institute of Chicago.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Art Institute of Chicago provider for American art.
 /// Access to 50K+ CC0 licensed artworks including masterpieces of American and European art.
@@ -76,21 +74,21 @@ impl Provider for ArtInstituteChicagoProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/artworks/search", self.base_url());
-        
+
         let limit = query.count.min(100).to_string();
         let page = query.page.to_string();
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("limit", limit.as_str()),
             ("page", page.as_str()),
-            ("fields", "id,title,artist_title,image_id,thumbnail,dimensions"),
+            (
+                "fields",
+                "id,title,artist_title,image_id,thumbnail,dimensions",
+            ),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: ArticSearchResponse = response.json_or_error().await?;
 
@@ -99,20 +97,24 @@ impl Provider for ArtInstituteChicagoProvider {
             .into_iter()
             .filter_map(|artwork| {
                 let image_id = artwork.image_id?;
-                let download_url = format!("{}/{}/full/843,/0/default.jpg", Self::IIIF_BASE, image_id);
-                let preview_url = format!("{}/{}/full/200,/0/default.jpg", Self::IIIF_BASE, image_id);
-                
-                Some(MediaAsset::builder()
-                    .id(artwork.id.to_string())
-                    .provider("artic")
-                    .media_type(MediaType::Image)
-                    .title(artwork.title.unwrap_or_else(|| "Untitled".to_string()))
-                    .download_url(download_url)
-                    .preview_url(preview_url)
-                    .source_url(format!("https://www.artic.edu/artworks/{}", artwork.id))
-                    .author(artwork.artist_title.unwrap_or_default())
-                    .license(License::Cc0)
-                    .build())
+                let download_url =
+                    format!("{}/{}/full/843,/0/default.jpg", Self::IIIF_BASE, image_id);
+                let preview_url =
+                    format!("{}/{}/full/200,/0/default.jpg", Self::IIIF_BASE, image_id);
+
+                Some(
+                    MediaAsset::builder()
+                        .id(artwork.id.to_string())
+                        .provider("artic")
+                        .media_type(MediaType::Image)
+                        .title(artwork.title.unwrap_or_else(|| "Untitled".to_string()))
+                        .download_url(download_url)
+                        .preview_url(preview_url)
+                        .source_url(format!("https://www.artic.edu/artworks/{}", artwork.id))
+                        .author(artwork.artist_title.unwrap_or_default())
+                        .license(License::Cc0)
+                        .build(),
+                )
             })
             .collect();
 

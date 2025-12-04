@@ -1,7 +1,7 @@
 //! Smithsonian Open Access provider implementation.
 //!
 //! [Smithsonian Open Access API](https://api.si.edu/)
-//! 
+//!
 //! Provides access to 4.5+ million CC0 licensed images from the Smithsonian.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Smithsonian Open Access provider for museum media.
 /// Access to 4.5M+ CC0 licensed images and 3D models.
@@ -84,10 +82,10 @@ impl Provider for SmithsonianProvider {
         };
 
         let url = format!("{}/search", self.base_url());
-        
+
         let start = ((query.page - 1) * query.count).to_string();
         let rows = query.count.min(100).to_string();
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("start", &start),
@@ -95,10 +93,7 @@ impl Provider for SmithsonianProvider {
             ("api_key", api_key.as_str()),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: SmithsonianSearchResponse = response.json_or_error().await?;
 
@@ -109,26 +104,29 @@ impl Provider for SmithsonianProvider {
             .filter_map(|row| {
                 let content = row.content?;
                 let descriptive_non_repeating = content.descriptive_non_repeating?;
-                
+
                 // Get the first available media
                 let online_media = descriptive_non_repeating.online_media?;
                 let media = online_media.media.into_iter().next()?;
-                
+
                 let download_url = media.content.clone();
                 let thumbnail = media.thumbnail.unwrap_or_else(|| download_url.clone());
-                
-                // Determine media type from content type
-                let media_type = if media.media_type.contains("3d") || media.media_type.contains("model") {
-                    MediaType::Model3D
-                } else {
-                    MediaType::Image
-                };
 
-                let title = descriptive_non_repeating.title
+                // Determine media type from content type
+                let media_type =
+                    if media.media_type.contains("3d") || media.media_type.contains("model") {
+                        MediaType::Model3D
+                    } else {
+                        MediaType::Image
+                    };
+
+                let title = descriptive_non_repeating
+                    .title
                     .and_then(|t| t.content)
                     .unwrap_or_else(|| "Smithsonian Item".to_string());
 
-                let guid = descriptive_non_repeating.guid
+                let guid = descriptive_non_repeating
+                    .guid
                     .unwrap_or_else(|| row.id.clone());
 
                 let asset = MediaAsset::builder()
@@ -243,7 +241,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = SmithsonianProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "smithsonian");
         assert_eq!(provider.display_name(), "Smithsonian Open Access");
         assert!(provider.requires_api_key());
@@ -253,7 +251,7 @@ mod tests {
     fn test_supported_media_types() {
         let config = Config::default_for_testing();
         let provider = SmithsonianProvider::new(&config);
-        
+
         let types = provider.supported_media_types();
         assert!(types.contains(&MediaType::Image));
         assert!(types.contains(&MediaType::Model3D));

@@ -36,7 +36,7 @@ impl VideoFormat {
             Self::Gif => "gif",
         }
     }
-    
+
     /// Get FFmpeg codec arguments.
     pub fn codec_args(&self) -> Vec<&'static str> {
         match self {
@@ -48,7 +48,7 @@ impl VideoFormat {
             Self::Gif => vec![],
         }
     }
-    
+
     /// Parse format from string.
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
@@ -133,25 +133,25 @@ impl TranscodeOptions {
             ..Default::default()
         }
     }
-    
+
     /// Set quality level.
     pub fn with_quality(mut self, quality: VideoQuality) -> Self {
         self.quality = quality;
         self
     }
-    
+
     /// Set target bitrate (e.g., "2M", "5000k").
     pub fn with_bitrate(mut self, bitrate: &str) -> Self {
         self.bitrate = Some(bitrate.to_string());
         self
     }
-    
+
     /// Set frame rate.
     pub fn with_fps(mut self, fps: f32) -> Self {
         self.fps = Some(fps);
         self
     }
-    
+
     /// Strip audio track.
     pub fn without_audio(mut self) -> Self {
         self.no_audio = true;
@@ -183,7 +183,7 @@ pub fn transcode_video<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -191,62 +191,57 @@ pub fn transcode_video<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y") // Overwrite output
         .arg("-i")
         .arg(input_path);
-    
+
     // Add codec arguments
     for arg in options.format.codec_args() {
         cmd.arg(arg);
     }
-    
+
     // Quality/bitrate settings
     if let Some(bitrate) = &options.bitrate {
         cmd.arg("-b:v").arg(bitrate);
     } else if options.format != VideoFormat::Gif {
         cmd.arg("-crf").arg(options.quality.crf().to_string());
     }
-    
+
     // Audio settings
     if options.no_audio {
         cmd.arg("-an");
     } else if let Some(audio_bitrate) = &options.audio_bitrate {
         cmd.arg("-b:a").arg(audio_bitrate);
     }
-    
+
     // Frame rate
     if let Some(fps) = options.fps {
         cmd.arg("-r").arg(fps.to_string());
     }
-    
+
     // Extra arguments
     for arg in &options.extra_args {
         cmd.arg(arg);
     }
-    
+
     cmd.arg(output_path);
-    
+
     let output = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}. Is FFmpeg installed?", e),
         source: None,
     })?;
-    
+
     if !output.status.success() {
         return Err(DxError::Config {
-            message: format!(
-                "FFmpeg failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ),
+            message: format!("FFmpeg failed: {}", String::from_utf8_lossy(&output.stderr)),
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
         format!(
             "Transcoded to {} format ({} bytes)",
@@ -279,9 +274,9 @@ pub fn batch_transcode<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut converted = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
@@ -289,27 +284,26 @@ pub fn batch_transcode<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("output");
         let output_path = output_dir.join(format!("{}.{}", file_stem, options.format.extension()));
-        
+
         if transcode_video(input_path, &output_path, options.clone()).is_ok() {
             converted.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Converted {} videos", converted.len()))
-        .with_paths(converted))
+
+    Ok(ToolOutput::success(format!("Converted {} videos", converted.len())).with_paths(converted))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_video_format() {
         assert_eq!(VideoFormat::Mp4.extension(), "mp4");
         assert_eq!(VideoFormat::WebM.extension(), "webm");
         assert_eq!(VideoFormat::from_str("mp4"), Some(VideoFormat::Mp4));
     }
-    
+
     #[test]
     fn test_quality_crf() {
         assert!(VideoQuality::High.crf() < VideoQuality::Low.crf());

@@ -8,20 +8,20 @@
 //! - **Archive Tools**: Compression, extraction, integrity checking, etc.
 //! - **Utility Tools**: File management, hashing, encoding, clipboard operations, etc.
 
-pub mod image;
-pub mod video;
+pub mod archive;
 pub mod audio;
 pub mod document;
-pub mod archive;
+pub mod image;
 pub mod utility;
+pub mod video;
 
 // Re-export commonly used items
-pub use image::ImageTools;
-pub use video::VideoTools;
+pub use archive::ArchiveTools;
 pub use audio::AudioTools;
 pub use document::DocumentTools;
-pub use archive::ArchiveTools;
+pub use image::ImageTools;
 pub use utility::UtilityTools;
+pub use video::VideoTools;
 
 use crate::error::Result;
 use std::path::Path;
@@ -30,10 +30,10 @@ use std::path::Path;
 pub trait Tool {
     /// Returns the name of the tool.
     fn name(&self) -> &'static str;
-    
+
     /// Returns a description of the tool.
     fn description(&self) -> &'static str;
-    
+
     /// Returns the category of the tool.
     fn category(&self) -> ToolCategory;
 }
@@ -67,7 +67,7 @@ impl ToolCategory {
             Self::Utility,
         ]
     }
-    
+
     /// Returns the category name as a string.
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -104,7 +104,7 @@ impl ToolOutput {
             metadata: std::collections::HashMap::new(),
         }
     }
-    
+
     /// Create a successful output with output path.
     pub fn success_with_path(message: impl Into<String>, path: impl AsRef<Path>) -> Self {
         Self {
@@ -114,7 +114,7 @@ impl ToolOutput {
             metadata: std::collections::HashMap::new(),
         }
     }
-    
+
     /// Create a failed output.
     pub fn failure(message: impl Into<String>) -> Self {
         Self {
@@ -124,13 +124,13 @@ impl ToolOutput {
             metadata: std::collections::HashMap::new(),
         }
     }
-    
+
     /// Add a metadata entry.
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
-    
+
     /// Add output paths.
     pub fn with_paths(mut self, paths: Vec<std::path::PathBuf>) -> Self {
         self.output_paths = paths;

@@ -94,37 +94,44 @@ pub use error::{DxError, Result};
 pub use types::{License, MediaAsset, MediaType, SearchQuery, SearchResult};
 
 // Re-export engine components
-pub use engine::{Downloader, FileManager, Scraper, ScrapeOptions, ScrapeResult, SearchEngine};
+pub use engine::{Downloader, FileManager, ScrapeOptions, ScrapeResult, Scraper, SearchEngine};
 
 // Re-export FREE providers (13 providers with 890M+ assets - NO API KEYS REQUIRED)
 pub use providers::{
+    ArtInstituteChicagoProvider,
+    ClevelandMuseumProvider,
+    DplaProvider,
+    EuropeanaProvider,
+    InternetArchiveProvider,
+    LibraryOfCongressProvider,
+    LoremPicsumProvider,
+    MetMuseumProvider,
+    NasaImagesProvider,
     // Tier 1: High-volume providers (700M+)
-    OpenverseProvider, WikimediaCommonsProvider, EuropeanaProvider, DplaProvider,
-    InternetArchiveProvider, LibraryOfCongressProvider,
-    // Tier 2: Museum providers
-    RijksmuseumProvider, MetMuseumProvider, NasaImagesProvider, 
-    ClevelandMuseumProvider, ArtInstituteChicagoProvider,
+    OpenverseProvider,
     // Tier 3: 3D & Utility providers
-    PolyHavenProvider, LoremPicsumProvider,
+    PolyHavenProvider,
     // Registry
     ProviderRegistry,
+    // Tier 2: Museum providers
+    RijksmuseumProvider,
+    WikimediaCommonsProvider,
 };
 
 // Re-export PREMIUM providers (6 providers with 113M+ assets - OPTIONAL API KEYS)
 // These gracefully degrade when API keys are not configured
 pub use providers::{
-    UnsplashProvider,    // 5M+ high-quality photos
-    PexelsProvider,      // 3.5M+ photos & videos
-    PixabayProvider,     // 4.2M+ images, videos, music
     FreesoundProvider,   // 600K+ sound effects
     GiphyProvider,       // Millions of GIFs
+    PexelsProvider,      // 3.5M+ photos & videos
+    PixabayProvider,     // 4.2M+ images, videos, music
     SmithsonianProvider, // 4.5M+ CC0 images
+    UnsplashProvider,    // 5M+ high-quality photos
 };
 
 // Re-export tools module for media processing
 pub use tools::{
-    ToolOutput,
-    ImageTools, VideoTools, AudioTools, DocumentTools, ArchiveTools, UtilityTools,
+    ArchiveTools, AudioTools, DocumentTools, ImageTools, ToolOutput, UtilityTools, VideoTools,
 };
 
 /// Library version

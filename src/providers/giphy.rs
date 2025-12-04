@@ -1,7 +1,7 @@
 //! Giphy provider implementation.
 //!
 //! [Giphy API Documentation](https://developers.giphy.com/docs/api)
-//! 
+//!
 //! Provides access to millions of GIFs and stickers.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Giphy provider for GIFs and stickers.
 /// Access to millions of animated GIFs.
@@ -84,10 +82,10 @@ impl Provider for GiphyProvider {
         };
 
         let url = format!("{}/gifs/search", self.base_url());
-        
+
         let offset = ((query.page - 1) * query.count).to_string();
         let limit = query.count.min(50).to_string();
-        
+
         let params = [
             ("api_key", api_key.as_str()),
             ("q", query.query.as_str()),
@@ -96,10 +94,7 @@ impl Provider for GiphyProvider {
             ("rating", "g"), // Safe for work
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: GiphySearchResponse = response.json_or_error().await?;
 
@@ -111,11 +106,15 @@ impl Provider for GiphyProvider {
                 let original = &gif.images.original;
                 let download_url = original.url.clone().unwrap_or_default();
                 let preview_url = gif.images.fixed_height.url.clone().unwrap_or_default();
-                
-                let width = original.width.as_ref()
+
+                let width = original
+                    .width
+                    .as_ref()
                     .and_then(|w| w.parse::<u32>().ok())
                     .unwrap_or(0);
-                let height = original.height.as_ref()
+                let height = original
+                    .height
+                    .as_ref()
                     .and_then(|h| h.parse::<u32>().ok())
                     .unwrap_or(0);
 
@@ -213,7 +212,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = GiphyProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "giphy");
         assert_eq!(provider.display_name(), "Giphy");
         assert!(provider.requires_api_key());
@@ -223,7 +222,7 @@ mod tests {
     fn test_supported_media_types() {
         let config = Config::default_for_testing();
         let provider = GiphyProvider::new(&config);
-        
+
         let types = provider.supported_media_types();
         assert!(types.contains(&MediaType::Gif));
     }

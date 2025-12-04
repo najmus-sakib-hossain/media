@@ -1,7 +1,7 @@
 //! Lorem Picsum provider implementation.
 //!
 //! [Lorem Picsum](https://picsum.photos)
-//! 
+//!
 //! Provides random placeholder images from Unsplash - no API key required.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Lorem Picsum provider for placeholder images.
 /// No API key required, unlimited access to random images.
@@ -73,19 +71,13 @@ impl Provider for LoremPicsumProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/v2/list", self.base_url());
-        
+
         let limit = query.count.min(100).to_string();
         let page = query.page.to_string();
-        
-        let params = [
-            ("limit", limit.as_str()),
-            ("page", page.as_str()),
-        ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let params = [("limit", limit.as_str()), ("page", page.as_str())];
+
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let images: Vec<PicsumImage> = response.json_or_error().await?;
 
@@ -94,7 +86,8 @@ impl Provider for LoremPicsumProvider {
         let filtered_images: Vec<_> = if query.query.is_empty() || query.query == "*" {
             images
         } else {
-            images.into_iter()
+            images
+                .into_iter()
                 .filter(|img| img.author.to_lowercase().contains(&query_lower))
                 .collect()
         };
@@ -103,8 +96,13 @@ impl Provider for LoremPicsumProvider {
             .into_iter()
             .map(|img| {
                 // Construct download URL with original dimensions
-                let download_url = format!("{}/id/{}/{}/{}", 
-                    self.base_url(), img.id, img.width, img.height);
+                let download_url = format!(
+                    "{}/id/{}/{}/{}",
+                    self.base_url(),
+                    img.id,
+                    img.width,
+                    img.height
+                );
                 let preview_url = format!("{}/id/{}/400/300", self.base_url(), img.id);
 
                 MediaAsset::builder()
@@ -173,7 +171,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = LoremPicsumProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "picsum");
         assert_eq!(provider.display_name(), "Lorem Picsum");
         assert!(!provider.requires_api_key());
@@ -184,7 +182,7 @@ mod tests {
     fn test_supported_media_types() {
         let config = Config::default_for_testing();
         let provider = LoremPicsumProvider::new(&config);
-        
+
         let types = provider.supported_media_types();
         assert!(types.contains(&MediaType::Image));
     }

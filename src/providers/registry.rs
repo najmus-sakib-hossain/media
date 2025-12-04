@@ -10,20 +10,32 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::providers::traits::Provider;
 use crate::providers::{
+    ArtInstituteChicagoProvider,
+    ClevelandMuseumProvider,
+    DplaProvider,
+    EuropeanaProvider,
+    FreesoundProvider,
+    GiphyProvider,
     // FREE providers (no API key required)
-    InternetArchiveProvider, LoremPicsumProvider,
-    MetMuseumProvider, NasaImagesProvider, OpenverseProvider,
-    WikimediaCommonsProvider, LibraryOfCongressProvider, EuropeanaProvider,
-    DplaProvider, RijksmuseumProvider, ArtInstituteChicagoProvider,
-    ClevelandMuseumProvider, PolyHavenProvider,
+    InternetArchiveProvider,
+    LibraryOfCongressProvider,
+    LoremPicsumProvider,
+    MetMuseumProvider,
+    NasaImagesProvider,
+    OpenverseProvider,
+    PexelsProvider,
+    PixabayProvider,
+    PolyHavenProvider,
+    RijksmuseumProvider,
+    SmithsonianProvider,
     // PREMIUM providers (optional API key - graceful degradation)
-    UnsplashProvider, PexelsProvider, PixabayProvider,
-    FreesoundProvider, GiphyProvider, SmithsonianProvider,
+    UnsplashProvider,
+    WikimediaCommonsProvider,
 };
 use crate::types::{MediaType, SearchQuery, SearchResult};
 
 /// Registry for managing and querying media providers.
-/// 
+///
 /// ## FREE Providers (13) - No API Keys Required - 890M+ Assets
 /// - Openverse: 700M+ images and audio (CC/CC0)
 /// - Wikimedia Commons: 92M+ files
@@ -67,7 +79,7 @@ impl ProviderRegistry {
         // ═══════════════════════════════════════════════════════════════════
         // TIER 1: High-Volume Providers (700M+ assets) - NO API KEY REQUIRED
         // ═══════════════════════════════════════════════════════════════════
-        
+
         // Openverse - 700M+ images and audio (no API key required)
         let openverse = OpenverseProvider::new(config);
         providers.insert(openverse.name().to_string(), Arc::new(openverse));
@@ -95,7 +107,7 @@ impl ProviderRegistry {
         // ═══════════════════════════════════════════════════════════════════
         // TIER 2: Museum Providers - NO API KEY REQUIRED
         // ═══════════════════════════════════════════════════════════════════
-        
+
         // Rijksmuseum - 700K+ Dutch masterpieces (CC0)
         let rijksmuseum = RijksmuseumProvider::new(config);
         providers.insert(rijksmuseum.name().to_string(), Arc::new(rijksmuseum));
@@ -119,7 +131,7 @@ impl ProviderRegistry {
         // ═══════════════════════════════════════════════════════════════════
         // TIER 3: 3D & Utility Providers - NO API KEY REQUIRED
         // ═══════════════════════════════════════════════════════════════════
-        
+
         // Poly Haven - 3.7K+ 3D models, textures, HDRIs (CC0)
         let polyhaven = PolyHavenProvider::new(config);
         providers.insert(polyhaven.name().to_string(), Arc::new(polyhaven));
@@ -133,7 +145,7 @@ impl ProviderRegistry {
         // These providers are only available when API keys are configured.
         // Without keys, they simply don't appear in search results.
         // ═══════════════════════════════════════════════════════════════════
-        
+
         // Unsplash - 5M+ high-quality photos (free API key at unsplash.com/developers)
         let unsplash = UnsplashProvider::new(config);
         providers.insert(unsplash.name().to_string(), Arc::new(unsplash));
@@ -221,13 +233,13 @@ impl ProviderRegistry {
         provider_name: &str,
         query: &SearchQuery,
     ) -> Result<SearchResult> {
-        let provider = self.get(provider_name).ok_or_else(|| {
-            crate::error::DxError::ProviderApi {
-                provider: provider_name.to_string(),
-                message: "Provider not found".to_string(),
-                status_code: 404,
-            }
-        })?;
+        let provider =
+            self.get(provider_name)
+                .ok_or_else(|| crate::error::DxError::ProviderApi {
+                    provider: provider_name.to_string(),
+                    message: "Provider not found".to_string(),
+                    status_code: 404,
+                })?;
 
         provider.search(query).await
     }
@@ -317,7 +329,7 @@ mod tests {
     fn test_registry_creation() {
         let config = Config::default();
         let registry = ProviderRegistry::new(&config);
-        
+
         // FREE providers should be registered (no API keys required)
         // Tier 1: High-volume providers
         assert!(registry.has_provider("openverse"));
@@ -326,18 +338,18 @@ mod tests {
         assert!(registry.has_provider("dpla"));
         assert!(registry.has_provider("archive"));
         assert!(registry.has_provider("loc"));
-        
+
         // Tier 2: Museum providers
         assert!(registry.has_provider("rijksmuseum"));
         assert!(registry.has_provider("met"));
         assert!(registry.has_provider("nasa"));
         assert!(registry.has_provider("cleveland"));
         assert!(registry.has_provider("artic"));
-        
+
         // Tier 3: 3D & Utility providers
         assert!(registry.has_provider("polyhaven"));
         assert!(registry.has_provider("picsum"));
-        
+
         // PREMIUM providers (registered but not available without API keys)
         assert!(registry.has_provider("unsplash"));
         assert!(registry.has_provider("pexels"));
@@ -345,7 +357,7 @@ mod tests {
         assert!(registry.has_provider("freesound"));
         assert!(registry.has_provider("giphy"));
         assert!(registry.has_provider("smithsonian"));
-        
+
         assert!(!registry.has_provider("nonexistent"));
     }
 
@@ -353,7 +365,7 @@ mod tests {
     fn test_provider_stats() {
         let config = Config::default();
         let registry = ProviderRegistry::new(&config);
-        
+
         let stats = registry.stats();
         // Total: 13 FREE + 6 PREMIUM = 19 providers
         assert_eq!(stats.total, 19);
@@ -368,7 +380,7 @@ mod tests {
     fn test_get_provider() {
         let config = Config::default();
         let registry = ProviderRegistry::new(&config);
-        
+
         let provider = registry.get("openverse");
         assert!(provider.is_some());
         assert_eq!(provider.unwrap().name(), "openverse");

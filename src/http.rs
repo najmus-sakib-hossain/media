@@ -2,12 +2,12 @@
 //!
 //! Provides a shared HTTP client for all provider implementations.
 
+use crate::USER_AGENT;
 use crate::error::{DxError, Result};
 use crate::types::RateLimitConfig;
-use crate::USER_AGENT;
 use reqwest::{Client, Response, StatusCode};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{debug, warn};
@@ -79,11 +79,7 @@ impl HttpClient {
     /// # Errors
     ///
     /// Returns an error if the request fails after all retries.
-    pub async fn get_with_headers(
-        &self,
-        url: &str,
-        headers: &[(&str, &str)],
-    ) -> Result<Response> {
+    pub async fn get_with_headers(&self, url: &str, headers: &[(&str, &str)]) -> Result<Response> {
         self.request_with_retry(|| {
             let mut req = self.client.get(url);
             for (key, value) in headers {
@@ -136,7 +132,11 @@ impl HttpClient {
             self.rate_limiter.acquire().await;
 
             let request = build_request();
-            debug!("HTTP request attempt {}/{}", attempt + 1, self.max_retries + 1);
+            debug!(
+                "HTTP request attempt {}/{}",
+                attempt + 1,
+                self.max_retries + 1
+            );
 
             match request.send().await {
                 Ok(response) => {
@@ -159,11 +159,7 @@ impl HttpClient {
                     // Handle server errors with retry
                     if status.is_server_error() && attempt < self.max_retries {
                         let delay = Self::exponential_backoff(attempt);
-                        warn!(
-                            "Server error {}, retrying in {:?}",
-                            status.as_u16(),
-                            delay
-                        );
+                        warn!("Server error {}, retrying in {:?}", status.as_u16(), delay);
                         sleep(delay).await;
                         continue;
                     }
@@ -195,7 +191,8 @@ impl HttpClient {
         let jitter = (std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .subsec_nanos() as u64) % 500;
+            .subsec_nanos() as u64)
+            % 500;
         Duration::from_millis(delay + jitter)
     }
 

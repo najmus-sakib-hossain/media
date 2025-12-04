@@ -37,7 +37,7 @@ impl HashAlgorithm {
             HashAlgorithm::Crc32 => "crc32",
         }
     }
-    
+
     /// Get algorithm name.
     pub fn name(&self) -> &'static str {
         match self {
@@ -49,7 +49,7 @@ impl HashAlgorithm {
             HashAlgorithm::Crc32 => "CRC32",
         }
     }
-    
+
     /// Get hash length in hex characters.
     pub fn hex_length(&self) -> usize {
         match self {
@@ -78,7 +78,7 @@ impl HashAlgorithm {
 /// ```
 pub fn hash_file<P: AsRef<Path>>(input: P, algorithm: HashAlgorithm) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -86,23 +86,23 @@ pub fn hash_file<P: AsRef<Path>>(input: P, algorithm: HashAlgorithm) -> Result<T
             source: None,
         });
     }
-    
+
     // Try native command
     if let Ok(result) = hash_with_command(input_path, algorithm) {
         return Ok(result);
     }
-    
+
     // Try PowerShell on Windows
     #[cfg(windows)]
     if let Ok(result) = hash_with_powershell(input_path, algorithm) {
         return Ok(result);
     }
-    
+
     // Try openssl
     if let Ok(result) = hash_with_openssl(input_path, algorithm) {
         return Ok(result);
     }
-    
+
     Err(DxError::Config {
         message: format!("Failed to calculate {} hash", algorithm.name()),
         source: None,
@@ -113,22 +113,22 @@ pub fn hash_file<P: AsRef<Path>>(input: P, algorithm: HashAlgorithm) -> Result<T
 fn hash_with_command(input: &Path, algorithm: HashAlgorithm) -> Result<ToolOutput> {
     let mut cmd = Command::new(algorithm.command());
     cmd.arg(input);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run {}: {}", algorithm.command(), e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "Hash command failed".to_string(),
             source: None,
         });
     }
-    
+
     let output = String::from_utf8_lossy(&result.stdout);
     let hash = output.split_whitespace().next().unwrap_or("").to_string();
-    
+
     Ok(ToolOutput::success(hash.clone())
         .with_metadata("algorithm", algorithm.name().to_string())
         .with_metadata("hash", hash))
@@ -143,35 +143,39 @@ fn hash_with_powershell(input: &Path, algorithm: HashAlgorithm) -> Result<ToolOu
         HashAlgorithm::Sha256 => "SHA256",
         HashAlgorithm::Sha384 => "SHA384",
         HashAlgorithm::Sha512 => "SHA512",
-        HashAlgorithm::Crc32 => return Err(DxError::Config {
-            message: "CRC32 not supported in PowerShell".to_string(),
-            source: None,
-        }),
+        HashAlgorithm::Crc32 => {
+            return Err(DxError::Config {
+                message: "CRC32 not supported in PowerShell".to_string(),
+                source: None,
+            });
+        }
     };
-    
+
     let script = format!(
         "(Get-FileHash '{}' -Algorithm {}).Hash",
         input.to_string_lossy(),
         algo
     );
-    
+
     let mut cmd = Command::new("powershell");
     cmd.arg("-Command").arg(&script);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run PowerShell: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "PowerShell hash failed".to_string(),
             source: None,
         });
     }
-    
-    let hash = String::from_utf8_lossy(&result.stdout).trim().to_lowercase();
-    
+
+    let hash = String::from_utf8_lossy(&result.stdout)
+        .trim()
+        .to_lowercase();
+
     Ok(ToolOutput::success(hash.clone())
         .with_metadata("algorithm", algorithm.name().to_string())
         .with_metadata("hash", hash))
@@ -185,38 +189,33 @@ fn hash_with_openssl(input: &Path, algorithm: HashAlgorithm) -> Result<ToolOutpu
         HashAlgorithm::Sha256 => "sha256",
         HashAlgorithm::Sha384 => "sha384",
         HashAlgorithm::Sha512 => "sha512",
-        HashAlgorithm::Crc32 => return Err(DxError::Config {
-            message: "CRC32 not supported in OpenSSL".to_string(),
-            source: None,
-        }),
+        HashAlgorithm::Crc32 => {
+            return Err(DxError::Config {
+                message: "CRC32 not supported in OpenSSL".to_string(),
+                source: None,
+            });
+        }
     };
-    
+
     let mut cmd = Command::new("openssl");
-    cmd.arg("dgst")
-        .arg(format!("-{}", algo))
-        .arg(input);
-    
+    cmd.arg("dgst").arg(format!("-{}", algo)).arg(input);
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run openssl: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "OpenSSL hash failed".to_string(),
             source: None,
         });
     }
-    
+
     let output = String::from_utf8_lossy(&result.stdout);
     // Format: SHA256(file)= hash
-    let hash = output
-        .split('=')
-        .last()
-        .unwrap_or("")
-        .trim()
-        .to_lowercase();
-    
+    let hash = output.split('=').last().unwrap_or("").trim().to_lowercase();
+
     Ok(ToolOutput::success(hash.clone())
         .with_metadata("algorithm", algorithm.name().to_string())
         .with_metadata("hash", hash))
@@ -244,10 +243,10 @@ pub fn verify_hash<P: AsRef<Path>>(
     algorithm: HashAlgorithm,
 ) -> Result<ToolOutput> {
     let result = hash_file(input, algorithm)?;
-    
+
     let actual = result.metadata.get("hash").cloned().unwrap_or_default();
     let matches = actual.to_lowercase() == expected.to_lowercase();
-    
+
     Ok(ToolOutput::success(if matches {
         "Hash matches!".to_string()
     } else {
@@ -261,16 +260,16 @@ pub fn verify_hash<P: AsRef<Path>>(
 /// Calculate hashes with multiple algorithms.
 pub fn multi_hash<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     let mut output = ToolOutput::success("File hashes calculated");
-    
+
     let algorithms = [
         HashAlgorithm::Md5,
         HashAlgorithm::Sha1,
         HashAlgorithm::Sha256,
         HashAlgorithm::Sha512,
     ];
-    
+
     for algo in &algorithms {
         if let Ok(result) = hash_file(input_path, *algo) {
             if let Some(hash) = result.metadata.get("hash") {
@@ -278,14 +277,14 @@ pub fn multi_hash<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
             }
         }
     }
-    
+
     Ok(output)
 }
 
 /// Batch hash multiple files.
 pub fn batch_hash<P: AsRef<Path>>(inputs: &[P], algorithm: HashAlgorithm) -> Result<ToolOutput> {
     let mut results = Vec::new();
-    
+
     for input in inputs {
         let path = input.as_ref();
         if let Ok(result) = hash_file(path, algorithm) {
@@ -294,7 +293,7 @@ pub fn batch_hash<P: AsRef<Path>>(inputs: &[P], algorithm: HashAlgorithm) -> Res
             }
         }
     }
-    
+
     Ok(ToolOutput::success(results.join("\n"))
         .with_metadata("algorithm", algorithm.name().to_string())
         .with_metadata("file_count", results.len().to_string()))
@@ -303,7 +302,7 @@ pub fn batch_hash<P: AsRef<Path>>(inputs: &[P], algorithm: HashAlgorithm) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_algorithm_name() {
         assert_eq!(HashAlgorithm::Sha256.name(), "SHA-256");

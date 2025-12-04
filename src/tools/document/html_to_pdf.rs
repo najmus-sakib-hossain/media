@@ -50,7 +50,7 @@ impl HtmlToPdfOptions {
     pub fn a4() -> Self {
         Self::default()
     }
-    
+
     /// Letter size for US documents.
     pub fn letter() -> Self {
         Self {
@@ -58,7 +58,7 @@ impl HtmlToPdfOptions {
             ..Default::default()
         }
     }
-    
+
     /// Landscape orientation.
     pub fn landscape() -> Self {
         Self {
@@ -92,7 +92,7 @@ pub fn html_to_pdf_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -100,62 +100,73 @@ pub fn html_to_pdf_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     // Try wkhtmltopdf first (most common)
     if let Ok(result) = convert_with_wkhtmltopdf(input_path, output_path, &options) {
         return Ok(result);
     }
-    
+
     // Try Chrome/Chromium headless
     if let Ok(result) = convert_with_chrome(input_path, output_path, &options) {
         return Ok(result);
     }
-    
+
     // Try weasyprint
     if let Ok(result) = convert_with_weasyprint(input_path, output_path) {
         return Ok(result);
     }
-    
+
     Err(DxError::Config {
-        message: "HTML to PDF conversion failed. Install wkhtmltopdf, Chrome, or weasyprint.".to_string(),
+        message: "HTML to PDF conversion failed. Install wkhtmltopdf, Chrome, or weasyprint."
+            .to_string(),
         source: None,
     })
 }
 
 /// Convert using wkhtmltopdf.
-fn convert_with_wkhtmltopdf(input: &Path, output: &Path, options: &HtmlToPdfOptions) -> Result<ToolOutput> {
+fn convert_with_wkhtmltopdf(
+    input: &Path,
+    output: &Path,
+    options: &HtmlToPdfOptions,
+) -> Result<ToolOutput> {
     let mut cmd = Command::new("wkhtmltopdf");
-    
-    cmd.arg("--page-size").arg(&options.page_size)
-        .arg("--margin-top").arg(format!("{}mm", options.margin))
-        .arg("--margin-bottom").arg(format!("{}mm", options.margin))
-        .arg("--margin-left").arg(format!("{}mm", options.margin))
-        .arg("--margin-right").arg(format!("{}mm", options.margin));
-    
+
+    cmd.arg("--page-size")
+        .arg(&options.page_size)
+        .arg("--margin-top")
+        .arg(format!("{}mm", options.margin))
+        .arg("--margin-bottom")
+        .arg(format!("{}mm", options.margin))
+        .arg("--margin-left")
+        .arg(format!("{}mm", options.margin))
+        .arg("--margin-right")
+        .arg(format!("{}mm", options.margin));
+
     if matches!(options.orientation, PageOrientation::Landscape) {
         cmd.arg("--orientation").arg("Landscape");
     }
-    
+
     if options.background {
         cmd.arg("--background");
     } else {
         cmd.arg("--no-background");
     }
-    
+
     if options.javascript {
         cmd.arg("--enable-javascript")
-            .arg("--javascript-delay").arg(options.js_delay.to_string());
+            .arg("--javascript-delay")
+            .arg(options.js_delay.to_string());
     } else {
         cmd.arg("--disable-javascript");
     }
-    
+
     cmd.arg(input).arg(output);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run wkhtmltopdf: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -165,7 +176,7 @@ fn convert_with_wkhtmltopdf(input: &Path, output: &Path, options: &HtmlToPdfOpti
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Converted HTML to PDF using wkhtmltopdf",
         output,
@@ -173,7 +184,11 @@ fn convert_with_wkhtmltopdf(input: &Path, output: &Path, options: &HtmlToPdfOpti
 }
 
 /// Convert using Chrome headless.
-fn convert_with_chrome(input: &Path, output: &Path, options: &HtmlToPdfOptions) -> Result<ToolOutput> {
+fn convert_with_chrome(
+    input: &Path,
+    output: &Path,
+    options: &HtmlToPdfOptions,
+) -> Result<ToolOutput> {
     // Try common Chrome executable names
     let chrome_names = if cfg!(windows) {
         vec!["chrome", "chromium", "google-chrome"]
@@ -185,11 +200,15 @@ fn convert_with_chrome(input: &Path, output: &Path, options: &HtmlToPdfOptions) 
     } else {
         vec!["google-chrome", "chromium", "chromium-browser"]
     };
-    
-    let input_url = format!("file://{}", input.canonicalize()
-        .unwrap_or_else(|_| input.to_path_buf())
-        .to_string_lossy());
-    
+
+    let input_url = format!(
+        "file://{}",
+        input
+            .canonicalize()
+            .unwrap_or_else(|_| input.to_path_buf())
+            .to_string_lossy()
+    );
+
     for chrome in chrome_names {
         let mut cmd = Command::new(chrome);
         cmd.arg("--headless")
@@ -198,7 +217,7 @@ fn convert_with_chrome(input: &Path, output: &Path, options: &HtmlToPdfOptions) 
             .arg(format!("--print-to-pdf={}", output.to_string_lossy()))
             .arg(format!("--print-to-pdf-no-header"))
             .arg(&input_url);
-        
+
         if let Ok(result) = cmd.output() {
             if result.status.success() {
                 return Ok(ToolOutput::success_with_path(
@@ -208,7 +227,7 @@ fn convert_with_chrome(input: &Path, output: &Path, options: &HtmlToPdfOptions) 
             }
         }
     }
-    
+
     Err(DxError::Config {
         message: "Chrome conversion failed".to_string(),
         source: None,
@@ -219,12 +238,12 @@ fn convert_with_chrome(input: &Path, output: &Path, options: &HtmlToPdfOptions) 
 fn convert_with_weasyprint(input: &Path, output: &Path) -> Result<ToolOutput> {
     let mut cmd = Command::new("weasyprint");
     cmd.arg(input).arg(output);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run weasyprint: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -234,7 +253,7 @@ fn convert_with_weasyprint(input: &Path, output: &Path) -> Result<ToolOutput> {
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Converted HTML to PDF using weasyprint",
         output,
@@ -244,15 +263,13 @@ fn convert_with_weasyprint(input: &Path, output: &Path) -> Result<ToolOutput> {
 /// Convert URL to PDF.
 pub fn url_to_pdf<P: AsRef<Path>>(url: &str, output: P) -> Result<ToolOutput> {
     let output_path = output.as_ref();
-    
+
     // Try wkhtmltopdf first
     let mut cmd = Command::new("wkhtmltopdf");
-    cmd.arg("--page-size").arg("A4")
-        .arg(url)
-        .arg(output_path);
-    
+    cmd.arg("--page-size").arg("A4").arg(url).arg(output_path);
+
     let result = cmd.output();
-    
+
     if let Ok(result) = result {
         if result.status.success() {
             return Ok(ToolOutput::success_with_path(
@@ -261,14 +278,14 @@ pub fn url_to_pdf<P: AsRef<Path>>(url: &str, output: P) -> Result<ToolOutput> {
             ));
         }
     }
-    
+
     // Try Chrome
     let chrome_names = if cfg!(windows) {
         vec!["chrome", "chromium"]
     } else {
         vec!["google-chrome", "chromium", "chromium-browser"]
     };
-    
+
     for chrome in chrome_names {
         let mut cmd = Command::new(chrome);
         cmd.arg("--headless")
@@ -276,7 +293,7 @@ pub fn url_to_pdf<P: AsRef<Path>>(url: &str, output: P) -> Result<ToolOutput> {
             .arg("--no-sandbox")
             .arg(format!("--print-to-pdf={}", output_path.to_string_lossy()))
             .arg(url);
-        
+
         if let Ok(result) = cmd.output() {
             if result.status.success() {
                 return Ok(ToolOutput::success_with_path(
@@ -286,7 +303,7 @@ pub fn url_to_pdf<P: AsRef<Path>>(url: &str, output: P) -> Result<ToolOutput> {
             }
         }
     }
-    
+
     Err(DxError::Config {
         message: "URL to PDF conversion failed".to_string(),
         source: None,
@@ -296,22 +313,22 @@ pub fn url_to_pdf<P: AsRef<Path>>(url: &str, output: P) -> Result<ToolOutput> {
 /// Convert HTML string to PDF.
 pub fn html_string_to_pdf<P: AsRef<Path>>(html: &str, output: P) -> Result<ToolOutput> {
     let output_path = output.as_ref();
-    
+
     // Write HTML to temp file
     let temp_dir = std::env::temp_dir();
     let temp_file = temp_dir.join(format!("html_to_pdf_{}.html", std::process::id()));
-    
+
     std::fs::write(&temp_file, html).map_err(|e| DxError::FileIo {
         path: temp_file.clone(),
         message: format!("Failed to write temp file: {}", e),
         source: None,
     })?;
-    
+
     let result = html_to_pdf(&temp_file, output_path);
-    
+
     // Clean up
     let _ = std::fs::remove_file(&temp_file);
-    
+
     result
 }
 
@@ -327,9 +344,9 @@ pub fn batch_html_to_pdf<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut converted = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
@@ -337,25 +354,27 @@ pub fn batch_html_to_pdf<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("document");
         let output_path = output_dir.join(format!("{}.pdf", file_stem));
-        
+
         if html_to_pdf_with_options(input_path, &output_path, options.clone()).is_ok() {
             converted.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Converted {} HTML files to PDF", converted.len()))
-        .with_paths(converted))
+
+    Ok(
+        ToolOutput::success(format!("Converted {} HTML files to PDF", converted.len()))
+            .with_paths(converted),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_options() {
         let a4 = HtmlToPdfOptions::a4();
         assert_eq!(a4.page_size, "A4");
-        
+
         let letter = HtmlToPdfOptions::letter();
         assert_eq!(letter.page_size, "Letter");
     }

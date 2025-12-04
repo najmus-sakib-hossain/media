@@ -81,7 +81,7 @@ impl ImageFilter {
             Self::Rotate270 => "Rotate 270° clockwise",
         }
     }
-    
+
     /// List all available filters.
     pub fn all() -> &'static [ImageFilter] {
         &[
@@ -168,13 +168,13 @@ pub fn apply_filter_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     let result = match filter {
         ImageFilter::Grayscale => DynamicImage::ImageLuma8(img.to_luma8()).to_rgba8(),
         ImageFilter::Invert => {
@@ -187,9 +187,7 @@ pub fn apply_filter_with_options<P: AsRef<Path>>(
             rgba
         }
         ImageFilter::Sepia => apply_sepia(&img),
-        ImageFilter::Blur => {
-            image::imageops::blur(&img, options.blur_sigma).to_rgba8()
-        }
+        ImageFilter::Blur => image::imageops::blur(&img, options.blur_sigma).to_rgba8(),
         ImageFilter::Sharpen => apply_sharpen(&img),
         ImageFilter::ContrastIncrease => adjust_contrast(&img, options.contrast),
         ImageFilter::ContrastDecrease => adjust_contrast(&img, -options.contrast),
@@ -208,14 +206,14 @@ pub fn apply_filter_with_options<P: AsRef<Path>>(
         ImageFilter::Rotate180 => image::imageops::rotate180(&img).to_rgba8(),
         ImageFilter::Rotate270 => image::imageops::rotate270(&img).to_rgba8(),
     };
-    
+
     let result_img = DynamicImage::ImageRgba8(result);
     result_img.save(output_path).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to save image: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Applied {} filter", filter.description()),
         output_path,
@@ -229,11 +227,11 @@ fn apply_sepia(img: &DynamicImage) -> image::RgbaImage {
         let r = pixel[0] as f32;
         let g = pixel[1] as f32;
         let b = pixel[2] as f32;
-        
+
         let tr = (0.393 * r + 0.769 * g + 0.189 * b).min(255.0) as u8;
         let tg = (0.349 * r + 0.686 * g + 0.168 * b).min(255.0) as u8;
         let tb = (0.272 * r + 0.534 * g + 0.131 * b).min(255.0) as u8;
-        
+
         pixel[0] = tr;
         pixel[1] = tg;
         pixel[2] = tb;
@@ -247,7 +245,7 @@ fn apply_sharpen(img: &DynamicImage) -> image::RgbaImage {
     let blurred = image::imageops::blur(img, 1.0);
     let mut rgba = img.to_rgba8();
     let blur_rgba = blurred.to_rgba8();
-    
+
     for (i, (orig, blur)) in rgba.pixels_mut().zip(blur_rgba.pixels()).enumerate() {
         for c in 0..3 {
             let diff = orig[c] as i32 - blur[c] as i32;
@@ -261,7 +259,7 @@ fn apply_sharpen(img: &DynamicImage) -> image::RgbaImage {
 fn adjust_contrast(img: &DynamicImage, amount: i32) -> image::RgbaImage {
     let factor = (259.0 * (amount as f32 + 255.0)) / (255.0 * (259.0 - amount as f32));
     let mut rgba = img.to_rgba8();
-    
+
     for pixel in rgba.pixels_mut() {
         for c in 0..3 {
             let value = ((factor * (pixel[c] as f32 - 128.0)) + 128.0).clamp(0.0, 255.0);
@@ -274,7 +272,7 @@ fn adjust_contrast(img: &DynamicImage, amount: i32) -> image::RgbaImage {
 /// Adjust image brightness.
 fn adjust_brightness(img: &DynamicImage, amount: i32) -> image::RgbaImage {
     let mut rgba = img.to_rgba8();
-    
+
     for pixel in rgba.pixels_mut() {
         for c in 0..3 {
             pixel[c] = (pixel[c] as i32 + amount).clamp(0, 255) as u8;
@@ -287,38 +285,38 @@ fn adjust_brightness(img: &DynamicImage, amount: i32) -> image::RgbaImage {
 fn apply_vintage(img: &DynamicImage) -> image::RgbaImage {
     let sepia = apply_sepia(img);
     let mut rgba = sepia;
-    
+
     // Add slight vignette and fade
     let (w, h) = (rgba.width(), rgba.height());
     let cx = w as f32 / 2.0;
     let cy = h as f32 / 2.0;
     let max_dist = (cx * cx + cy * cy).sqrt();
-    
+
     for (x, y, pixel) in rgba.enumerate_pixels_mut() {
         let dx = x as f32 - cx;
         let dy = y as f32 - cy;
         let dist = (dx * dx + dy * dy).sqrt() / max_dist;
         let vignette = 1.0 - (dist * 0.5);
-        
+
         for c in 0..3 {
             pixel[c] = (pixel[c] as f32 * vignette).clamp(0.0, 255.0) as u8;
         }
     }
-    
+
     // Add slight fade
     for pixel in rgba.pixels_mut() {
         for c in 0..3 {
             pixel[c] = (pixel[c] as f32 * 0.9 + 25.0).clamp(0.0, 255.0) as u8;
         }
     }
-    
+
     rgba
 }
 
 /// Apply color tone adjustment.
 fn apply_color_tone(img: &DynamicImage, r_mult: f32, g_mult: f32, b_mult: f32) -> image::RgbaImage {
     let mut rgba = img.to_rgba8();
-    
+
     for pixel in rgba.pixels_mut() {
         pixel[0] = (pixel[0] as f32 * r_mult).clamp(0.0, 255.0) as u8;
         pixel[1] = (pixel[1] as f32 * g_mult).clamp(0.0, 255.0) as u8;
@@ -331,7 +329,7 @@ fn apply_color_tone(img: &DynamicImage, r_mult: f32, g_mult: f32, b_mult: f32) -
 fn apply_threshold(img: &DynamicImage, threshold: u8) -> image::RgbaImage {
     let gray = img.to_luma8();
     let mut rgba = image::RgbaImage::new(gray.width(), gray.height());
-    
+
     for (x, y, pixel) in gray.enumerate_pixels() {
         let value = if pixel[0] > threshold { 255 } else { 0 };
         rgba.put_pixel(x, y, Rgba([value, value, value, 255]));
@@ -344,12 +342,12 @@ fn apply_emboss(img: &DynamicImage) -> image::RgbaImage {
     let gray = img.to_luma8();
     let (w, h) = gray.dimensions();
     let mut rgba = image::RgbaImage::new(w, h);
-    
+
     for y in 1..(h - 1) {
         for x in 1..(w - 1) {
             let top_left = gray.get_pixel(x - 1, y - 1)[0] as i32;
             let bottom_right = gray.get_pixel(x + 1, y + 1)[0] as i32;
-            
+
             let value = ((bottom_right - top_left) + 128).clamp(0, 255) as u8;
             rgba.put_pixel(x, y, Rgba([value, value, value, 255]));
         }
@@ -362,17 +360,17 @@ fn apply_edge_detect(img: &DynamicImage) -> image::RgbaImage {
     let gray = img.to_luma8();
     let (w, h) = gray.dimensions();
     let mut rgba = image::RgbaImage::new(w, h);
-    
+
     // Sobel operator
     for y in 1..(h - 1) {
         for x in 1..(w - 1) {
             let p = |dx: i32, dy: i32| -> i32 {
                 gray.get_pixel((x as i32 + dx) as u32, (y as i32 + dy) as u32)[0] as i32
             };
-            
+
             let gx = -p(-1, -1) + p(1, -1) - 2 * p(-1, 0) + 2 * p(1, 0) - p(-1, 1) + p(1, 1);
             let gy = -p(-1, -1) - 2 * p(0, -1) - p(1, -1) + p(-1, 1) + 2 * p(0, 1) + p(1, 1);
-            
+
             let magnitude = ((gx * gx + gy * gy) as f32).sqrt().clamp(0.0, 255.0) as u8;
             rgba.put_pixel(x, y, Rgba([magnitude, magnitude, magnitude, 255]));
         }
@@ -386,7 +384,7 @@ fn apply_pixelate(img: &DynamicImage, pixel_size: u32) -> image::RgbaImage {
     let (w, h) = rgba.dimensions();
     let pixel_size = pixel_size.max(1);
     let mut result = image::RgbaImage::new(w, h);
-    
+
     for block_y in (0..h).step_by(pixel_size as usize) {
         for block_x in (0..w).step_by(pixel_size as usize) {
             // Calculate average color for block
@@ -394,7 +392,7 @@ fn apply_pixelate(img: &DynamicImage, pixel_size: u32) -> image::RgbaImage {
             let mut g_sum: u32 = 0;
             let mut b_sum: u32 = 0;
             let mut count: u32 = 0;
-            
+
             for y in block_y..(block_y + pixel_size).min(h) {
                 for x in block_x..(block_x + pixel_size).min(w) {
                     let pixel = rgba.get_pixel(x, y);
@@ -404,11 +402,11 @@ fn apply_pixelate(img: &DynamicImage, pixel_size: u32) -> image::RgbaImage {
                     count += 1;
                 }
             }
-            
+
             let avg_r = (r_sum / count) as u8;
             let avg_g = (g_sum / count) as u8;
             let avg_b = (b_sum / count) as u8;
-            
+
             // Fill block with average color
             for y in block_y..(block_y + pixel_size).min(h) {
                 for x in block_x..(block_x + pixel_size).min(w) {
@@ -417,7 +415,7 @@ fn apply_pixelate(img: &DynamicImage, pixel_size: u32) -> image::RgbaImage {
             }
         }
     }
-    
+
     result
 }
 
@@ -429,13 +427,13 @@ pub fn apply_filters<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let mut img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     for filter in filters {
         let result = match filter {
             ImageFilter::Grayscale => DynamicImage::ImageLuma8(img.to_luma8()).to_rgba8(),
@@ -455,21 +453,30 @@ pub fn apply_filters<P: AsRef<Path>>(
             ImageFilter::Rotate90 => image::imageops::rotate90(&img).to_rgba8(),
             ImageFilter::Rotate180 => image::imageops::rotate180(&img).to_rgba8(),
             ImageFilter::Rotate270 => image::imageops::rotate270(&img).to_rgba8(),
-            _ => apply_filter_with_options(&input_path, &output_path, *filter, FilterOptions::default())
-                .map(|_| img.to_rgba8())?
+            _ => apply_filter_with_options(
+                &input_path,
+                &output_path,
+                *filter,
+                FilterOptions::default(),
+            )
+            .map(|_| img.to_rgba8())?,
         };
         img = DynamicImage::ImageRgba8(result);
     }
-    
+
     img.save(output_path).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to save image: {}", e),
         source: None,
     })?;
-    
+
     let filter_names: Vec<_> = filters.iter().map(|f| f.description()).collect();
     Ok(ToolOutput::success_with_path(
-        format!("Applied {} filters: {}", filters.len(), filter_names.join(", ")),
+        format!(
+            "Applied {} filters: {}",
+            filters.len(),
+            filter_names.join(", ")
+        ),
         output_path,
     ))
 }
@@ -477,14 +484,14 @@ pub fn apply_filters<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_filter_list() {
         let filters = ImageFilter::all();
         assert!(!filters.is_empty());
         assert!(filters.contains(&ImageFilter::Grayscale));
     }
-    
+
     #[test]
     fn test_filter_description() {
         assert_eq!(ImageFilter::Grayscale.description(), "Convert to grayscale");

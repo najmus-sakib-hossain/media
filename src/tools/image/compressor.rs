@@ -4,9 +4,9 @@
 
 use crate::error::{DxError, Result};
 use crate::tools::ToolOutput;
-use std::path::Path;
-use std::io::BufWriter;
 use std::fs::File;
+use std::io::BufWriter;
+use std::path::Path;
 
 /// Compression options for different formats.
 #[derive(Debug, Clone)]
@@ -42,7 +42,7 @@ impl CompressionOptions {
             lossless: false,
         }
     }
-    
+
     /// Create options for maximum compression.
     pub fn max_compression() -> Self {
         Self {
@@ -52,7 +52,7 @@ impl CompressionOptions {
             lossless: false,
         }
     }
-    
+
     /// Create options with specific quality (1-100).
     pub fn with_quality(quality: u8) -> Self {
         let quality = quality.clamp(1, 100);
@@ -91,42 +91,41 @@ pub fn compress_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
-    let input_size = std::fs::metadata(input_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let input_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
+
     // Determine format from output extension
     let extension = output_path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("jpg")
         .to_lowercase();
-    
+
     let file = File::create(output_path).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to create output file: {}", e),
         source: None,
     })?;
     let mut writer = BufWriter::new(file);
-    
+
     match extension.as_str() {
         "jpg" | "jpeg" => {
             let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
                 &mut writer,
                 options.jpeg_quality,
             );
-            img.write_with_encoder(encoder).map_err(|e| DxError::FileIo {
-                path: output_path.to_path_buf(),
-                message: format!("Failed to encode JPEG: {}", e),
-                source: None,
-            })?;
+            img.write_with_encoder(encoder)
+                .map_err(|e| DxError::FileIo {
+                    path: output_path.to_path_buf(),
+                    message: format!("Failed to encode JPEG: {}", e),
+                    source: None,
+                })?;
         }
         "png" => {
             let compression = match options.png_compression {
@@ -139,11 +138,12 @@ pub fn compress_with_options<P: AsRef<Path>>(
                 compression,
                 image::codecs::png::FilterType::Adaptive,
             );
-            img.write_with_encoder(encoder).map_err(|e| DxError::FileIo {
-                path: output_path.to_path_buf(),
-                message: format!("Failed to encode PNG: {}", e),
-                source: None,
-            })?;
+            img.write_with_encoder(encoder)
+                .map_err(|e| DxError::FileIo {
+                    path: output_path.to_path_buf(),
+                    message: format!("Failed to encode PNG: {}", e),
+                    source: None,
+                })?;
         }
         "webp" => {
             // WebP encoding - save as PNG with conversion note
@@ -162,19 +162,17 @@ pub fn compress_with_options<P: AsRef<Path>>(
             })?;
         }
     }
-    
+
     drop(writer);
-    
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     let reduction = if input_size > 0 {
         ((input_size - output_size) as f64 / input_size as f64 * 100.0) as i32
     } else {
         0
     };
-    
+
     Ok(ToolOutput::success_with_path(
         format!(
             "Compressed {} ({} bytes -> {} bytes, {}% reduction)",
@@ -202,11 +200,11 @@ pub fn batch_compress<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut compressed = Vec::new();
     let mut total_input_size: u64 = 0;
     let mut total_output_size: u64 = 0;
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_name = input_path
@@ -214,11 +212,11 @@ pub fn batch_compress<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("output.jpg");
         let output_path = output_dir.join(file_name);
-        
+
         if let Ok(input_meta) = std::fs::metadata(input_path) {
             total_input_size += input_meta.len();
         }
-        
+
         if compress_image(input_path, &output_path, quality).is_ok() {
             if let Ok(output_meta) = std::fs::metadata(&output_path) {
                 total_output_size += output_meta.len();
@@ -226,13 +224,13 @@ pub fn batch_compress<P: AsRef<Path>>(
             compressed.push(output_path);
         }
     }
-    
+
     let reduction = if total_input_size > 0 {
         ((total_input_size - total_output_size) as f64 / total_input_size as f64 * 100.0) as i32
     } else {
         0
     };
-    
+
     Ok(ToolOutput::success(format!(
         "Compressed {} images ({}% total reduction)",
         compressed.len(),
@@ -247,34 +245,34 @@ pub fn batch_compress<P: AsRef<Path>>(
 pub fn optimize_image<P: AsRef<Path>>(path: P, quality: u8) -> Result<ToolOutput> {
     let path = path.as_ref();
     let temp_path = path.with_extension("tmp");
-    
+
     let result = compress_image(path, &temp_path, quality)?;
-    
+
     std::fs::rename(&temp_path, path).map_err(|e| DxError::FileIo {
         path: path.to_path_buf(),
         message: format!("Failed to replace original: {}", e),
         source: None,
     })?;
-    
+
     Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_compression_options() {
         let opts = CompressionOptions::with_quality(80);
         assert_eq!(opts.jpeg_quality, 80);
         assert_eq!(opts.webp_quality, 80);
     }
-    
+
     #[test]
     fn test_quality_clamping() {
         let opts = CompressionOptions::with_quality(150);
         assert_eq!(opts.jpeg_quality, 100);
-        
+
         let opts = CompressionOptions::with_quality(0);
         assert_eq!(opts.jpeg_quality, 1);
     }

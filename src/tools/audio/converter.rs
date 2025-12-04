@@ -34,7 +34,7 @@ impl AudioOutputFormat {
             AudioOutputFormat::Opus => "opus",
         }
     }
-    
+
     /// Get FFmpeg codec name.
     pub fn codec(&self) -> &str {
         match self {
@@ -48,7 +48,7 @@ impl AudioOutputFormat {
             AudioOutputFormat::Opus => "libopus",
         }
     }
-    
+
     /// Detect from file extension.
     pub fn from_extension(ext: &str) -> Option<Self> {
         match ext.to_lowercase().as_str() {
@@ -99,7 +99,7 @@ impl ConvertOptions {
             channels: None,
         }
     }
-    
+
     /// Create lossless FLAC options.
     pub fn flac() -> Self {
         Self {
@@ -109,7 +109,7 @@ impl ConvertOptions {
             channels: None,
         }
     }
-    
+
     /// Create WAV options.
     pub fn wav(sample_rate: u32) -> Self {
         Self {
@@ -143,7 +143,7 @@ pub fn convert_audio<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -151,31 +151,33 @@ pub fn convert_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-c:a").arg(options.format.codec());
-    
+        .arg("-i")
+        .arg(input_path)
+        .arg("-c:a")
+        .arg(options.format.codec());
+
     if let Some(bitrate) = options.bitrate {
         cmd.arg("-b:a").arg(format!("{}k", bitrate));
     }
-    
+
     if let Some(sample_rate) = options.sample_rate {
         cmd.arg("-ar").arg(sample_rate.to_string());
     }
-    
+
     if let Some(channels) = options.channels {
         cmd.arg("-ac").arg(channels.to_string());
     }
-    
+
     cmd.arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -185,13 +187,15 @@ pub fn convert_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
-        format!("Converted to {} ({} bytes)", options.format.extension(), output_size),
+        format!(
+            "Converted to {} ({} bytes)",
+            options.format.extension(),
+            output_size
+        ),
         output_path,
     ))
 }
@@ -223,9 +227,9 @@ pub fn batch_convert<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut converted = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
@@ -233,32 +237,34 @@ pub fn batch_convert<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("audio");
         let output_path = output_dir.join(format!("{}.{}", file_stem, options.format.extension()));
-        
+
         if convert_audio(input_path, &output_path, options.clone()).is_ok() {
             converted.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Converted {} files", converted.len()))
-        .with_paths(converted))
+
+    Ok(ToolOutput::success(format!("Converted {} files", converted.len())).with_paths(converted))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_audio_format() {
         assert_eq!(AudioOutputFormat::Mp3.extension(), "mp3");
         assert_eq!(AudioOutputFormat::Mp3.codec(), "libmp3lame");
-        assert_eq!(AudioOutputFormat::from_extension("flac"), Some(AudioOutputFormat::Flac));
+        assert_eq!(
+            AudioOutputFormat::from_extension("flac"),
+            Some(AudioOutputFormat::Flac)
+        );
     }
-    
+
     #[test]
     fn test_convert_options() {
         let mp3 = ConvertOptions::mp3(320);
         assert_eq!(mp3.bitrate, Some(320));
-        
+
         let flac = ConvertOptions::flac();
         assert!(flac.bitrate.is_none());
     }

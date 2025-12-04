@@ -46,17 +46,17 @@ pub fn create_encrypted_zip_with_method<P: AsRef<Path>>(
     method: EncryptionMethod,
 ) -> Result<ToolOutput> {
     let output_path = output.as_ref();
-    
+
     // Try 7z first (better encryption)
     if let Ok(result) = create_with_7z(inputs, output_path, password, method) {
         return Ok(result);
     }
-    
+
     // Try zip
     if let Ok(result) = create_with_zip(inputs, output_path, password) {
         return Ok(result);
     }
-    
+
     Err(DxError::Config {
         message: "Encrypted archive creation failed. Install 7z or zip.".to_string(),
         source: None,
@@ -71,10 +71,8 @@ fn create_with_7z<P: AsRef<Path>>(
     method: EncryptionMethod,
 ) -> Result<ToolOutput> {
     let mut cmd = Command::new("7z");
-    cmd.arg("a")
-        .arg(format!("-p{}", password))
-        .arg("-mhe=on"); // Encrypt filenames too
-    
+    cmd.arg("a").arg(format!("-p{}", password)).arg("-mhe=on"); // Encrypt filenames too
+
     // Set encryption method
     match method {
         EncryptionMethod::Aes256 => {
@@ -84,28 +82,25 @@ fn create_with_7z<P: AsRef<Path>>(
             cmd.arg("-mem=ZipCrypto");
         }
     }
-    
+
     cmd.arg(output);
-    
+
     for input in inputs {
         cmd.arg(input.as_ref());
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
-            message: format!(
-                "7z failed: {}",
-                String::from_utf8_lossy(&result.stderr)
-            ),
+            message: format!("7z failed: {}", String::from_utf8_lossy(&result.stderr)),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Created encrypted archive with {:?}", method),
         output,
@@ -125,23 +120,23 @@ fn create_with_zip<P: AsRef<Path>>(
         .arg("-P")
         .arg(password)
         .arg(output);
-    
+
     for input in inputs {
         cmd.arg(input.as_ref());
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run zip: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "zip encryption failed".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Created encrypted ZIP archive",
         output,
@@ -155,30 +150,30 @@ pub fn create_encrypted_7z<P: AsRef<Path>>(
     password: &str,
 ) -> Result<ToolOutput> {
     let output_path = output.as_ref();
-    
+
     let mut cmd = Command::new("7z");
     cmd.arg("a")
         .arg("-t7z")
         .arg(format!("-p{}", password))
         .arg("-mhe=on") // Encrypt headers
         .arg(output_path);
-    
+
     for input in inputs {
         cmd.arg(input.as_ref());
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "7z encryption failed".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Created encrypted 7z archive",
         output_path,
@@ -193,7 +188,7 @@ pub fn extract_encrypted<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -201,31 +196,31 @@ pub fn extract_encrypted<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create directory: {}", e),
         source: None,
     })?;
-    
+
     let ext = input_path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("")
         .to_lowercase();
-    
+
     // Try 7z first
     if let Ok(result) = extract_with_7z(input_path, output_dir, password) {
         return Ok(result);
     }
-    
+
     // Try unzip for .zip files
     if ext == "zip" {
         if let Ok(result) = extract_with_unzip(input_path, output_dir, password) {
             return Ok(result);
         }
     }
-    
+
     Err(DxError::Config {
         message: "Extraction failed. Wrong password?".to_string(),
         source: None,
@@ -240,19 +235,19 @@ fn extract_with_7z(input: &Path, output_dir: &Path, password: &str) -> Result<To
         .arg(format!("-p{}", password))
         .arg(format!("-o{}", output_dir.to_string_lossy()))
         .arg(input);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "7z extraction failed".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Extracted encrypted archive",
         output_dir,
@@ -268,19 +263,19 @@ fn extract_with_unzip(input: &Path, output_dir: &Path, password: &str) -> Result
         .arg(input)
         .arg("-d")
         .arg(output_dir);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run unzip: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "unzip extraction failed".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Extracted encrypted ZIP",
         output_dir,
@@ -290,7 +285,7 @@ fn extract_with_unzip(input: &Path, output_dir: &Path, password: &str) -> Result
 /// Check if archive is encrypted.
 pub fn is_encrypted<P: AsRef<Path>>(input: P) -> Result<bool> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -298,28 +293,28 @@ pub fn is_encrypted<P: AsRef<Path>>(input: P) -> Result<bool> {
             source: None,
         });
     }
-    
+
     // Try to list with 7z
     let mut cmd = Command::new("7z");
     cmd.arg("l").arg("-slt").arg(input_path);
-    
+
     if let Ok(result) = cmd.output() {
         let output = String::from_utf8_lossy(&result.stdout);
         if output.contains("Encrypted = +") {
             return Ok(true);
         }
     }
-    
+
     // Try unzip test
     let ext = input_path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("");
-    
+
     if ext == "zip" {
         let mut cmd = Command::new("unzip");
         cmd.arg("-t").arg(input_path);
-        
+
         if let Ok(result) = cmd.output() {
             let output = String::from_utf8_lossy(&result.stderr);
             if output.contains("incorrect password") || output.contains("need password") {
@@ -327,7 +322,7 @@ pub fn is_encrypted<P: AsRef<Path>>(input: P) -> Result<bool> {
             }
         }
     }
-    
+
     Ok(false)
 }
 
@@ -340,7 +335,7 @@ pub fn change_password<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     // Extract to temp
     let temp_dir = std::env::temp_dir().join(format!("archive_pw_{}", std::process::id()));
     std::fs::create_dir_all(&temp_dir).map_err(|e| DxError::FileIo {
@@ -348,10 +343,10 @@ pub fn change_password<P: AsRef<Path>>(
         message: format!("Failed to create temp dir: {}", e),
         source: None,
     })?;
-    
+
     // Extract with old password
     extract_encrypted(input_path, &temp_dir, old_password)?;
-    
+
     // Get all files
     let files: Vec<_> = walkdir::WalkDir::new(&temp_dir)
         .into_iter()
@@ -359,14 +354,14 @@ pub fn change_password<P: AsRef<Path>>(
         .filter(|e| e.file_type().is_file())
         .map(|e| e.path().to_path_buf())
         .collect();
-    
+
     // Create new archive with new password
     let file_refs: Vec<&Path> = files.iter().map(|p| p.as_path()).collect();
     create_encrypted_zip(&file_refs, output_path, new_password)?;
-    
+
     // Cleanup
     let _ = std::fs::remove_dir_all(&temp_dir);
-    
+
     Ok(ToolOutput::success_with_path(
         "Changed archive password",
         output_path,
@@ -376,7 +371,7 @@ pub fn change_password<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_encryption_method() {
         let method = EncryptionMethod::Aes256;

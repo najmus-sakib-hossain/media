@@ -60,7 +60,7 @@ impl WatermarkOptions {
             ..Default::default()
         }
     }
-    
+
     /// Create subtle bottom-right watermark.
     pub fn subtle() -> Self {
         Self {
@@ -98,7 +98,7 @@ pub fn text_watermark_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -106,22 +106,22 @@ pub fn text_watermark_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     // Try pdftk stamp approach
     if let Ok(result) = stamp_with_pdftk(input_path, output_path, text, &options) {
         return Ok(result);
     }
-    
+
     // Try qpdf
     if let Ok(result) = watermark_with_qpdf(input_path, output_path, text, &options) {
         return Ok(result);
     }
-    
+
     // Try Ghostscript
     if let Ok(result) = watermark_with_gs(input_path, output_path, text, &options) {
         return Ok(result);
     }
-    
+
     Err(DxError::Config {
         message: "PDF watermarking failed. Install pdftk, qpdf, or Ghostscript.".to_string(),
         source: None,
@@ -132,7 +132,7 @@ pub fn text_watermark_with_options<P: AsRef<Path>>(
 fn create_watermark_pdf(text: &str, options: &WatermarkOptions) -> Result<std::path::PathBuf> {
     let temp_dir = std::env::temp_dir();
     let watermark_pdf = temp_dir.join(format!("watermark_{}.pdf", std::process::id()));
-    
+
     // Generate PostScript for watermark
     let ps_content = format!(
         r#"%!PS-Adobe-3.0
@@ -152,26 +152,23 @@ grestore
 
 showpage
 "#,
-        options.font_size,
-        options.opacity,
-        options.rotation,
-        text
+        options.font_size, options.opacity, options.rotation, text
     );
-    
+
     let ps_path = temp_dir.join(format!("watermark_{}.ps", std::process::id()));
     std::fs::write(&ps_path, ps_content).map_err(|e| DxError::FileIo {
         path: ps_path.clone(),
         message: format!("Failed to write PS file: {}", e),
         source: None,
     })?;
-    
+
     // Convert PS to PDF using Ghostscript
     let gs_names = if cfg!(windows) {
         vec!["gswin64c", "gswin32c", "gs"]
     } else {
         vec!["gs"]
     };
-    
+
     for gs in gs_names {
         let mut cmd = Command::new(gs);
         cmd.arg("-q")
@@ -180,7 +177,7 @@ showpage
             .arg("-sDEVICE=pdfwrite")
             .arg(format!("-sOutputFile={}", watermark_pdf.to_string_lossy()))
             .arg(&ps_path);
-        
+
         if let Ok(result) = cmd.output() {
             if result.status.success() {
                 let _ = std::fs::remove_file(&ps_path);
@@ -188,7 +185,7 @@ showpage
             }
         }
     }
-    
+
     let _ = std::fs::remove_file(&ps_path);
     Err(DxError::Config {
         message: "Failed to create watermark PDF".to_string(),
@@ -205,28 +202,28 @@ fn stamp_with_pdftk(
 ) -> Result<ToolOutput> {
     // Create watermark PDF
     let watermark_pdf = create_watermark_pdf(text, options)?;
-    
+
     let mut cmd = Command::new("pdftk");
     cmd.arg(input)
         .arg("stamp")
         .arg(&watermark_pdf)
         .arg("output")
         .arg(output);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run pdftk: {}", e),
         source: None,
     })?;
-    
+
     let _ = std::fs::remove_file(&watermark_pdf);
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "pdftk stamp failed".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Added watermark '{}' to PDF", text),
         output,
@@ -242,28 +239,28 @@ fn watermark_with_qpdf(
 ) -> Result<ToolOutput> {
     // Create watermark PDF
     let watermark_pdf = create_watermark_pdf(text, options)?;
-    
+
     let mut cmd = Command::new("qpdf");
     cmd.arg("--overlay")
         .arg(&watermark_pdf)
         .arg("--")
         .arg(input)
         .arg(output);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run qpdf: {}", e),
         source: None,
     })?;
-    
+
     let _ = std::fs::remove_file(&watermark_pdf);
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "qpdf overlay failed".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Added watermark '{}' to PDF", text),
         output,
@@ -282,7 +279,7 @@ fn watermark_with_gs(
     } else {
         vec!["gs"]
     };
-    
+
     // Create PostScript overlay command
     let ps_overlay = format!(
         r#"
@@ -301,12 +298,9 @@ fn watermark_with_gs(
             }} ifelse
         }} bind >> setpagedevice
         "#,
-        options.opacity,
-        options.font_size,
-        options.rotation,
-        text
+        options.opacity, options.font_size, options.rotation, text
     );
-    
+
     for gs in gs_names {
         let mut cmd = Command::new(gs);
         cmd.arg("-q")
@@ -318,7 +312,7 @@ fn watermark_with_gs(
             .arg(&ps_overlay)
             .arg("-f")
             .arg(input);
-        
+
         if let Ok(result) = cmd.output() {
             if result.status.success() {
                 return Ok(ToolOutput::success_with_path(
@@ -328,7 +322,7 @@ fn watermark_with_gs(
             }
         }
     }
-    
+
     Err(DxError::Config {
         message: "Ghostscript watermarking failed".to_string(),
         source: None,
@@ -354,7 +348,7 @@ pub fn image_watermark_with_options<P: AsRef<Path>>(
     let input_path = input.as_ref();
     let output_path = output.as_ref();
     let watermark_path = watermark_image.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -362,7 +356,7 @@ pub fn image_watermark_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     if !watermark_path.exists() {
         return Err(DxError::FileIo {
             path: watermark_path.to_path_buf(),
@@ -370,11 +364,11 @@ pub fn image_watermark_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     // Convert image to PDF first
     let temp_dir = std::env::temp_dir();
     let watermark_pdf = temp_dir.join(format!("wm_image_{}.pdf", std::process::id()));
-    
+
     // Use ImageMagick to convert
     let mut cmd = Command::new("convert");
     cmd.arg(watermark_path)
@@ -386,7 +380,7 @@ pub fn image_watermark_with_options<P: AsRef<Path>>(
         .arg("set")
         .arg(format!("{}%", (options.opacity * 100.0) as u32))
         .arg(&watermark_pdf);
-    
+
     if let Ok(result) = cmd.output() {
         if result.status.success() {
             // Now stamp with pdftk
@@ -396,7 +390,7 @@ pub fn image_watermark_with_options<P: AsRef<Path>>(
                 .arg(&watermark_pdf)
                 .arg("output")
                 .arg(output_path);
-            
+
             if let Ok(result) = cmd.output() {
                 let _ = std::fs::remove_file(&watermark_pdf);
                 if result.status.success() {
@@ -408,9 +402,9 @@ pub fn image_watermark_with_options<P: AsRef<Path>>(
             }
         }
     }
-    
+
     let _ = std::fs::remove_file(&watermark_pdf);
-    
+
     Err(DxError::Config {
         message: "Image watermarking failed. Install ImageMagick and pdftk.".to_string(),
         source: None,
@@ -424,12 +418,7 @@ pub fn draft_watermark<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput
 
 /// Add "CONFIDENTIAL" watermark.
 pub fn confidential_watermark<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
-    text_watermark_with_options(
-        input,
-        output,
-        "CONFIDENTIAL",
-        WatermarkOptions::diagonal(),
-    )
+    text_watermark_with_options(input, output, "CONFIDENTIAL", WatermarkOptions::diagonal())
 }
 
 /// Add "COPY" watermark.
@@ -450,9 +439,9 @@ pub fn batch_watermark<P: AsRef<Path>>(
         message: format!("Failed to create directory: {}", e),
         source: None,
     })?;
-    
+
     let mut processed = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_name = input_path
@@ -460,25 +449,24 @@ pub fn batch_watermark<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("document.pdf");
         let output_path = output_dir.join(file_name);
-        
+
         if text_watermark_with_options(input_path, &output_path, text, options.clone()).is_ok() {
             processed.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Watermarked {} PDFs", processed.len()))
-        .with_paths(processed))
+
+    Ok(ToolOutput::success(format!("Watermarked {} PDFs", processed.len())).with_paths(processed))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_options() {
         let diagonal = WatermarkOptions::diagonal();
         assert_eq!(diagonal.rotation, -45.0);
-        
+
         let subtle = WatermarkOptions::subtle();
         assert_eq!(subtle.opacity, 0.15);
     }

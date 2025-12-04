@@ -2,9 +2,9 @@
 
 use colored::Colorize;
 
+use crate::DxMedia;
 use crate::cli::args::{OutputFormat, ProvidersArgs};
 use crate::error::Result;
-use crate::DxMedia;
 
 /// Execute the providers command.
 pub async fn execute(args: ProvidersArgs, format: OutputFormat) -> Result<()> {
@@ -67,7 +67,7 @@ pub async fn execute(args: ProvidersArgs, format: OutputFormat) -> Result<()> {
         }
         OutputFormat::Text => {
             let stats = registry.stats();
-            
+
             println!("{}", "Available Providers".bold().cyan());
             println!(
                 "{} {} total, {} available, {} need API keys",
@@ -97,11 +97,7 @@ pub async fn execute(args: ProvidersArgs, format: OutputFormat) -> Result<()> {
                     p.display_name().bold(),
                     format!("({})", p.name()).dimmed()
                 );
-                println!(
-                    "      {} {}",
-                    "Types:".dimmed(),
-                    types.join(", ")
-                );
+                println!("      {} {}", "Types:".dimmed(), types.join(", "));
 
                 if args.detailed {
                     let rate = p.rate_limit();
@@ -117,11 +113,7 @@ pub async fn execute(args: ProvidersArgs, format: OutputFormat) -> Result<()> {
                     }
 
                     if p.requires_api_key() && !p.is_available() {
-                        println!(
-                            "      {} {}",
-                            "Note:".yellow(),
-                            "API key required".yellow()
-                        );
+                        println!("      {} {}", "Note:".yellow(), "API key required".yellow());
                     }
                 }
                 println!();

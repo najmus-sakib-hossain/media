@@ -32,7 +32,7 @@ impl MarkdownOptions {
             gfm: true,
         }
     }
-    
+
     /// Plain HTML without styling.
     pub fn plain() -> Self {
         Self::default()
@@ -120,7 +120,7 @@ pub fn markdown_to_html_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -128,28 +128,28 @@ pub fn markdown_to_html_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let markdown_content = std::fs::read_to_string(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to read input file: {}", e),
         source: None,
     })?;
-    
+
     // Simple markdown to HTML conversion
     let html_body = convert_markdown(&markdown_content);
-    
+
     // Build full HTML document
     let css = if options.include_css {
         options.custom_css.as_deref().unwrap_or(DEFAULT_CSS)
     } else {
         ""
     };
-    
+
     let title = input_path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("Document");
-    
+
     let html = format!(
         r#"<!DOCTYPE html>
 <html lang="en">
@@ -165,13 +165,13 @@ pub fn markdown_to_html_with_options<P: AsRef<Path>>(
 </html>"#,
         title, css, html_body
     );
-    
+
     std::fs::write(output_path, &html).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to write output file: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         "Converted markdown to HTML",
         output_path,
@@ -184,7 +184,7 @@ fn convert_markdown(markdown: &str) -> String {
     let mut in_code_block = false;
     let mut in_list = false;
     let mut code_lang = String::new();
-    
+
     for line in markdown.lines() {
         // Code blocks
         if line.starts_with("```") {
@@ -198,13 +198,13 @@ fn convert_markdown(markdown: &str) -> String {
             }
             continue;
         }
-        
+
         if in_code_block {
             html.push_str(&escape_html(line));
             html.push('\n');
             continue;
         }
-        
+
         // Close list if empty line
         if line.trim().is_empty() {
             if in_list {
@@ -214,7 +214,7 @@ fn convert_markdown(markdown: &str) -> String {
             html.push_str("<br>\n");
             continue;
         }
-        
+
         // Headers
         if line.starts_with("######") {
             html.push_str(&format!("<h6>{}</h6>\n", process_inline(&line[6..].trim())));
@@ -235,7 +235,10 @@ fn convert_markdown(markdown: &str) -> String {
         }
         // Blockquote
         else if line.starts_with('>') {
-            html.push_str(&format!("<blockquote>{}</blockquote>\n", process_inline(&line[1..].trim())));
+            html.push_str(&format!(
+                "<blockquote>{}</blockquote>\n",
+                process_inline(&line[1..].trim())
+            ));
         }
         // Unordered list
         else if line.trim().starts_with("- ") || line.trim().starts_with("* ") {
@@ -246,10 +249,16 @@ fn convert_markdown(markdown: &str) -> String {
             html.push_str(&format!("<li>{}</li>\n", process_inline(&line.trim()[2..])));
         }
         // Ordered list
-        else if line.trim().chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) 
-            && line.contains(". ") {
+        else if line
+            .trim()
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
+            && line.contains(". ")
+        {
             if let Some(pos) = line.find(". ") {
-                html.push_str(&format!("<li>{}</li>\n", process_inline(&line[pos+2..])));
+                html.push_str(&format!("<li>{}</li>\n", process_inline(&line[pos + 2..])));
             }
         }
         // Paragraph
@@ -257,41 +266,47 @@ fn convert_markdown(markdown: &str) -> String {
             html.push_str(&format!("<p>{}</p>\n", process_inline(line)));
         }
     }
-    
+
     if in_list {
         html.push_str("</ul>\n");
     }
     if in_code_block {
         html.push_str("</code></pre>\n");
     }
-    
+
     html
 }
 
 /// Process inline markdown (bold, italic, links, code).
 fn process_inline(text: &str) -> String {
     let mut result = escape_html(text);
-    
+
     // Bold
     let bold_re = regex::Regex::new(r"\*\*(.+?)\*\*").unwrap();
-    result = bold_re.replace_all(&result, "<strong>$1</strong>").to_string();
-    
+    result = bold_re
+        .replace_all(&result, "<strong>$1</strong>")
+        .to_string();
+
     // Italic
     let italic_re = regex::Regex::new(r"\*(.+?)\*").unwrap();
     result = italic_re.replace_all(&result, "<em>$1</em>").to_string();
-    
+
     // Inline code
     let code_re = regex::Regex::new(r"`(.+?)`").unwrap();
     result = code_re.replace_all(&result, "<code>$1</code>").to_string();
-    
+
     // Links
     let link_re = regex::Regex::new(r"\[(.+?)\]\((.+?)\)").unwrap();
-    result = link_re.replace_all(&result, "<a href=\"$2\">$1</a>").to_string();
-    
+    result = link_re
+        .replace_all(&result, "<a href=\"$2\">$1</a>")
+        .to_string();
+
     // Images
     let img_re = regex::Regex::new(r"!\[(.+?)\]\((.+?)\)").unwrap();
-    result = img_re.replace_all(&result, "<img src=\"$2\" alt=\"$1\">").to_string();
-    
+    result = img_re
+        .replace_all(&result, "<img src=\"$2\" alt=\"$1\">")
+        .to_string();
+
     result
 }
 
@@ -306,7 +321,7 @@ fn escape_html(text: &str) -> String {
 /// Convert markdown string to HTML string.
 pub fn markdown_string_to_html(markdown: &str, options: MarkdownOptions) -> String {
     let html_body = convert_markdown(markdown);
-    
+
     if options.include_css {
         let css = options.custom_css.as_deref().unwrap_or(DEFAULT_CSS);
         format!(
@@ -341,9 +356,9 @@ pub fn batch_markdown_to_html<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut converted = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
@@ -351,20 +366,22 @@ pub fn batch_markdown_to_html<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("document");
         let output_path = output_dir.join(format!("{}.html", file_stem));
-        
+
         if markdown_to_html_with_options(input_path, &output_path, options.clone()).is_ok() {
             converted.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Converted {} markdown files", converted.len()))
-        .with_paths(converted))
+
+    Ok(
+        ToolOutput::success(format!("Converted {} markdown files", converted.len()))
+            .with_paths(converted),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_convert_markdown() {
         let md = "# Hello\n\nThis is **bold** and *italic*.";
@@ -373,7 +390,7 @@ mod tests {
         assert!(html.contains("<strong>"));
         assert!(html.contains("<em>"));
     }
-    
+
     #[test]
     fn test_escape_html() {
         assert_eq!(escape_html("<script>"), "&lt;script&gt;");

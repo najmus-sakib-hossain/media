@@ -1,7 +1,7 @@
 //! Openverse provider implementation.
 //!
 //! [Openverse API Documentation](https://api.openverse.engineering/v1/)
-//! 
+//!
 //! Openverse is a search engine for openly-licensed media, providing access to
 //! over 700 million images and audio files from various sources.
 
@@ -13,9 +13,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Openverse provider for openly-licensed media.
 /// Access to 700M+ images and audio from Creative Commons sources.
@@ -44,17 +42,14 @@ impl OpenverseProvider {
     /// Search for images
     async fn search_images(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/images/", self.base_url());
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("page", &query.page.to_string()),
             ("page_size", &query.count.min(500).to_string()),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: OpenverseSearchResponse = response.json_or_error().await?;
 
@@ -63,7 +58,7 @@ impl OpenverseProvider {
             .into_iter()
             .map(|item| {
                 let license = Self::parse_license(&item.license, &item.license_version);
-                
+
                 MediaAsset::builder()
                     .id(item.id)
                     .provider("openverse")
@@ -95,17 +90,14 @@ impl OpenverseProvider {
     /// Search for audio
     async fn search_audio(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/audio/", self.base_url());
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("page", &query.page.to_string()),
             ("page_size", &query.count.min(500).to_string()),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: OpenverseAudioSearchResponse = response.json_or_error().await?;
 
@@ -114,7 +106,7 @@ impl OpenverseProvider {
             .into_iter()
             .map(|item| {
                 let license = Self::parse_license(&item.license, &item.license_version);
-                
+
                 MediaAsset::builder()
                     .id(item.id)
                     .provider("openverse")
@@ -277,7 +269,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = OpenverseProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "openverse");
         assert_eq!(provider.display_name(), "Openverse");
         assert!(!provider.requires_api_key());
@@ -288,7 +280,7 @@ mod tests {
     fn test_supported_media_types() {
         let config = Config::default_for_testing();
         let provider = OpenverseProvider::new(&config);
-        
+
         let types = provider.supported_media_types();
         assert!(types.contains(&MediaType::Image));
         assert!(types.contains(&MediaType::Audio));
@@ -296,8 +288,17 @@ mod tests {
 
     #[test]
     fn test_license_parsing() {
-        assert!(matches!(OpenverseProvider::parse_license("cc0", &None), License::Cc0));
-        assert!(matches!(OpenverseProvider::parse_license("by", &None), License::CcBy));
-        assert!(matches!(OpenverseProvider::parse_license("pdm", &None), License::PublicDomain));
+        assert!(matches!(
+            OpenverseProvider::parse_license("cc0", &None),
+            License::Cc0
+        ));
+        assert!(matches!(
+            OpenverseProvider::parse_license("by", &None),
+            License::CcBy
+        ));
+        assert!(matches!(
+            OpenverseProvider::parse_license("pdm", &None),
+            License::PublicDomain
+        ));
     }
 }

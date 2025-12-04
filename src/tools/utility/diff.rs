@@ -38,19 +38,19 @@ pub fn diff_files_with_format<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let file1_path = file1.as_ref();
     let file2_path = file2.as_ref();
-    
+
     let content1 = std::fs::read_to_string(file1_path).map_err(|e| DxError::FileIo {
         path: file1_path.to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let content2 = std::fs::read_to_string(file2_path).map_err(|e| DxError::FileIo {
         path: file2_path.to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     diff_strings_with_format(&content1, &content2, format)
 }
 
@@ -63,17 +63,20 @@ pub fn diff_strings(s1: &str, s2: &str) -> Result<ToolOutput> {
 pub fn diff_strings_with_format(s1: &str, s2: &str, format: DiffFormat) -> Result<ToolOutput> {
     let lines1: Vec<&str> = s1.lines().collect();
     let lines2: Vec<&str> = s2.lines().collect();
-    
+
     let diff_result = compute_diff(&lines1, &lines2);
-    
+
     let output = match format {
         DiffFormat::Unified => format_unified(&diff_result, &lines1, &lines2),
         DiffFormat::SideBySide => format_side_by_side(&diff_result, &lines1, &lines2),
         DiffFormat::Context => format_context(&diff_result, &lines1, &lines2),
     };
-    
-    let changes = diff_result.iter().filter(|d| !matches!(d, DiffOp::Equal(_))).count();
-    
+
+    let changes = diff_result
+        .iter()
+        .filter(|d| !matches!(d, DiffOp::Equal(_)))
+        .count();
+
     Ok(ToolOutput::success(output)
         .with_metadata("changes", changes.to_string())
         .with_metadata("lines1", lines1.len().to_string())
@@ -87,37 +90,36 @@ pub fn files_identical<P: AsRef<Path>>(file1: P, file2: P) -> Result<ToolOutput>
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let content2 = std::fs::read(file2.as_ref()).map_err(|e| DxError::FileIo {
         path: file2.as_ref().to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let identical = content1 == content2;
-    
-    Ok(ToolOutput::success(if identical {
-        "Files are identical"
-    } else {
-        "Files differ"
-    }.to_string())
+
+    Ok(ToolOutput::success(
+        if identical {
+            "Files are identical"
+        } else {
+            "Files differ"
+        }
+        .to_string(),
+    )
     .with_metadata("identical", identical.to_string()))
 }
 
 /// Save diff to file.
-pub fn save_diff<P: AsRef<Path>>(
-    file1: P,
-    file2: P,
-    output: P,
-) -> Result<ToolOutput> {
+pub fn save_diff<P: AsRef<Path>>(file1: P, file2: P, output: P) -> Result<ToolOutput> {
     let diff = diff_files(&file1, &file2)?;
-    
+
     std::fs::write(output.as_ref(), &diff.message).map_err(|e| DxError::FileIo {
         path: output.as_ref().to_path_buf(),
         message: format!("Failed to write file: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         "Diff saved to file",
         output.as_ref(),
@@ -137,10 +139,10 @@ fn compute_diff(lines1: &[&str], lines2: &[&str]) -> Vec<DiffOp> {
     // Simple diff algorithm
     let m = lines1.len();
     let n = lines2.len();
-    
+
     // Build LCS table
     let mut dp = vec![vec![0; n + 1]; m + 1];
-    
+
     for i in 1..=m {
         for j in 1..=n {
             if lines1[i - 1] == lines2[j - 1] {
@@ -150,12 +152,12 @@ fn compute_diff(lines1: &[&str], lines2: &[&str]) -> Vec<DiffOp> {
             }
         }
     }
-    
+
     // Backtrack to get diff
     let mut result = Vec::new();
     let mut i = m;
     let mut j = n;
-    
+
     while i > 0 || j > 0 {
         if i > 0 && j > 0 && lines1[i - 1] == lines2[j - 1] {
             result.push(DiffOp::Equal(i - 1));
@@ -169,7 +171,7 @@ fn compute_diff(lines1: &[&str], lines2: &[&str]) -> Vec<DiffOp> {
             i -= 1;
         }
     }
-    
+
     result.reverse();
     result
 }
@@ -177,7 +179,7 @@ fn compute_diff(lines1: &[&str], lines2: &[&str]) -> Vec<DiffOp> {
 /// Format as unified diff.
 fn format_unified(ops: &[DiffOp], lines1: &[&str], lines2: &[&str]) -> String {
     let mut output = String::new();
-    
+
     for op in ops {
         match op {
             DiffOp::Equal(i) => {
@@ -191,7 +193,7 @@ fn format_unified(ops: &[DiffOp], lines1: &[&str], lines2: &[&str]) -> String {
             }
         }
     }
-    
+
     output
 }
 
@@ -199,29 +201,22 @@ fn format_unified(ops: &[DiffOp], lines1: &[&str], lines2: &[&str]) -> String {
 fn format_side_by_side(ops: &[DiffOp], lines1: &[&str], lines2: &[&str]) -> String {
     let mut output = String::new();
     let width = 40;
-    
+
     let mut i1 = 0;
     let mut i2 = 0;
-    
+
     for op in ops {
         match op {
             DiffOp::Equal(_) => {
                 let left = lines1.get(i1).unwrap_or(&"");
                 let right = lines2.get(i2).unwrap_or(&"");
-                output.push_str(&format!(
-                    "{:<width$} | {}\n",
-                    truncate(left, width),
-                    right
-                ));
+                output.push_str(&format!("{:<width$} | {}\n", truncate(left, width), right));
                 i1 += 1;
                 i2 += 1;
             }
             DiffOp::Delete(_) => {
                 let left = lines1.get(i1).unwrap_or(&"");
-                output.push_str(&format!(
-                    "{:<width$} < \n",
-                    truncate(left, width)
-                ));
+                output.push_str(&format!("{:<width$} < \n", truncate(left, width)));
                 i1 += 1;
             }
             DiffOp::Insert(_) => {
@@ -234,25 +229,29 @@ fn format_side_by_side(ops: &[DiffOp], lines1: &[&str], lines2: &[&str]) -> Stri
             }
         }
     }
-    
+
     output
 }
 
 /// Format as context diff.
 fn format_context(ops: &[DiffOp], lines1: &[&str], lines2: &[&str]) -> String {
     let mut output = String::new();
-    
+
     output.push_str("*** Original\n");
     for op in ops {
         match op {
             DiffOp::Equal(i) | DiffOp::Delete(i) => {
-                let prefix = if matches!(op, DiffOp::Delete(_)) { "- " } else { "  " };
+                let prefix = if matches!(op, DiffOp::Delete(_)) {
+                    "- "
+                } else {
+                    "  "
+                };
                 output.push_str(&format!("{}{}\n", prefix, lines1[*i]));
             }
             _ => {}
         }
     }
-    
+
     output.push_str("--- Modified\n");
     for op in ops {
         match op {
@@ -265,7 +264,7 @@ fn format_context(ops: &[DiffOp], lines1: &[&str], lines2: &[&str]) -> String {
             _ => {}
         }
     }
-    
+
     output
 }
 
@@ -285,22 +284,31 @@ pub fn diff_stats<P: AsRef<Path>>(file1: P, file2: P) -> Result<ToolOutput> {
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let content2 = std::fs::read_to_string(file2.as_ref()).map_err(|e| DxError::FileIo {
         path: file2.as_ref().to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let lines1: Vec<&str> = content1.lines().collect();
     let lines2: Vec<&str> = content2.lines().collect();
-    
+
     let diff = compute_diff(&lines1, &lines2);
-    
-    let additions = diff.iter().filter(|d| matches!(d, DiffOp::Insert(_))).count();
-    let deletions = diff.iter().filter(|d| matches!(d, DiffOp::Delete(_))).count();
-    let unchanged = diff.iter().filter(|d| matches!(d, DiffOp::Equal(_))).count();
-    
+
+    let additions = diff
+        .iter()
+        .filter(|d| matches!(d, DiffOp::Insert(_)))
+        .count();
+    let deletions = diff
+        .iter()
+        .filter(|d| matches!(d, DiffOp::Delete(_)))
+        .count();
+    let unchanged = diff
+        .iter()
+        .filter(|d| matches!(d, DiffOp::Equal(_)))
+        .count();
+
     Ok(ToolOutput::success(format!(
         "Additions: {}\nDeletions: {}\nUnchanged: {}",
         additions, deletions, unchanged
@@ -313,16 +321,16 @@ pub fn diff_stats<P: AsRef<Path>>(file1: P, file2: P) -> Result<ToolOutput> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_diff_strings() {
         let s1 = "line1\nline2\nline3";
         let s2 = "line1\nmodified\nline3";
-        
+
         let result = diff_strings(s1, s2).unwrap();
         assert!(result.success);
     }
-    
+
     #[test]
     fn test_identical() {
         let s = "same\ncontent";

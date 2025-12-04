@@ -71,7 +71,7 @@ impl Config {
         let _ = dotenvy::dotenv();
 
         let media_dir = Self::get_path("DX_MEDIA_DIR", "./media");
-        
+
         Ok(Self {
             // API Keys (all optional - graceful degradation when missing)
             unsplash_api_key: Self::get_optional_string("UNSPLASH_ACCESS_KEY"),

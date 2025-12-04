@@ -23,7 +23,7 @@ use std::process::Command;
 pub fn split_pdf<P: AsRef<Path>>(input: P, output_dir: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -31,23 +31,23 @@ pub fn split_pdf<P: AsRef<Path>>(input: P, output_dir: P) -> Result<ToolOutput> 
             source: None,
         });
     }
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     // Try pdftk first
     if let Ok(result) = split_with_pdftk(input_path, output_dir) {
         return Ok(result);
     }
-    
+
     // Fall back to Ghostscript
     if let Ok(result) = split_with_ghostscript(input_path, output_dir) {
         return Ok(result);
     }
-    
+
     Err(DxError::Config {
         message: "PDF split failed. Install pdftk or Ghostscript.".to_string(),
         source: None,
@@ -57,18 +57,15 @@ pub fn split_pdf<P: AsRef<Path>>(input: P, output_dir: P) -> Result<ToolOutput> 
 /// Split using pdftk.
 fn split_with_pdftk(input: &Path, output_dir: &Path) -> Result<ToolOutput> {
     let pattern = output_dir.join("page_%03d.pdf");
-    
+
     let mut cmd = Command::new("pdftk");
-    cmd.arg(input)
-        .arg("burst")
-        .arg("output")
-        .arg(&pattern);
-    
+    cmd.arg(input).arg("burst").arg("output").arg(&pattern);
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run pdftk: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -78,20 +75,25 @@ fn split_with_pdftk(input: &Path, output_dir: &Path) -> Result<ToolOutput> {
             source: None,
         });
     }
-    
+
     // Remove doc_data.txt created by pdftk
     let _ = std::fs::remove_file(output_dir.join("doc_data.txt"));
-    
+
     // Count output files
     let count = std::fs::read_dir(output_dir)
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().extension().map(|ext| ext == "pdf").unwrap_or(false))
+                .filter(|e| {
+                    e.path()
+                        .extension()
+                        .map(|ext| ext == "pdf")
+                        .unwrap_or(false)
+                })
                 .count()
         })
         .unwrap_or(0);
-    
+
     Ok(ToolOutput::success(format!("Split into {} pages", count)))
 }
 
@@ -99,7 +101,7 @@ fn split_with_pdftk(input: &Path, output_dir: &Path) -> Result<ToolOutput> {
 fn split_with_ghostscript(input: &Path, output_dir: &Path) -> Result<ToolOutput> {
     let gs_cmd = if cfg!(windows) { "gswin64c" } else { "gs" };
     let pattern = output_dir.join("page_%03d.pdf");
-    
+
     let mut cmd = Command::new(gs_cmd);
     cmd.arg("-dBATCH")
         .arg("-dNOPAUSE")
@@ -107,12 +109,12 @@ fn split_with_ghostscript(input: &Path, output_dir: &Path) -> Result<ToolOutput>
         .arg("-sDEVICE=pdfwrite")
         .arg(format!("-sOutputFile={}", pattern.to_string_lossy()))
         .arg(input);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run Ghostscript: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -122,7 +124,7 @@ fn split_with_ghostscript(input: &Path, output_dir: &Path) -> Result<ToolOutput>
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success("Split PDF into pages"))
 }
 
@@ -141,7 +143,7 @@ pub fn extract_pages<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -149,14 +151,14 @@ pub fn extract_pages<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     if start == 0 || end < start {
         return Err(DxError::Config {
             message: "Invalid page range".to_string(),
             source: None,
         });
     }
-    
+
     // Try pdftk
     let mut cmd = Command::new("pdftk");
     cmd.arg(input_path)
@@ -164,12 +166,12 @@ pub fn extract_pages<P: AsRef<Path>>(
         .arg(format!("{}-{}", start, end))
         .arg("output")
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run pdftk: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -179,7 +181,7 @@ pub fn extract_pages<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Extracted pages {}-{}", start, end),
         output_path,
@@ -200,41 +202,39 @@ pub fn extract_nth_pages<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     // Get page count first
     let page_count = get_page_count(input_path)?;
-    
+
     // Build page list
     let pages: Vec<String> = (offset..=page_count)
         .step_by(n as usize)
         .map(|p| p.to_string())
         .collect();
-    
+
     if pages.is_empty() {
         return Err(DxError::Config {
             message: "No pages match criteria".to_string(),
             source: None,
         });
     }
-    
+
     let page_spec = pages.join(" ");
-    
+
     let mut cmd = Command::new("pdftk");
-    cmd.arg(input_path)
-        .arg("cat");
-    
+    cmd.arg(input_path).arg("cat");
+
     for page in &pages {
         cmd.arg(page);
     }
-    
-    cmd.arg("output")
-        .arg(output_path);
-    
+
+    cmd.arg("output").arg(output_path);
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run pdftk: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -244,7 +244,7 @@ pub fn extract_nth_pages<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Extracted every {}th page ({} pages)", n, pages.len()),
         output_path,
@@ -264,18 +264,17 @@ pub fn extract_even_pages<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOut
 /// Get the number of pages in a PDF.
 pub fn get_page_count<P: AsRef<Path>>(input: P) -> Result<u32> {
     let input_path = input.as_ref();
-    
+
     let mut cmd = Command::new("pdftk");
-    cmd.arg(input_path)
-        .arg("dump_data");
-    
+    cmd.arg(input_path).arg("dump_data");
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run pdftk: {}", e),
         source: None,
     })?;
-    
+
     let output = String::from_utf8_lossy(&result.stdout);
-    
+
     for line in output.lines() {
         if line.starts_with("NumberOfPages:") {
             if let Some(count_str) = line.split(':').nth(1) {
@@ -285,7 +284,7 @@ pub fn get_page_count<P: AsRef<Path>>(input: P) -> Result<u32> {
             }
         }
     }
-    
+
     Err(DxError::Config {
         message: "Could not determine page count".to_string(),
         source: None,
@@ -300,38 +299,36 @@ pub fn remove_pages<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let total_pages = get_page_count(input_path)?;
-    
+
     // Build list of pages to keep
     let pages_to_keep: Vec<String> = (1..=total_pages)
         .filter(|p| !pages_to_remove.contains(p))
         .map(|p| p.to_string())
         .collect();
-    
+
     if pages_to_keep.is_empty() {
         return Err(DxError::Config {
             message: "Cannot remove all pages".to_string(),
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("pdftk");
-    cmd.arg(input_path)
-        .arg("cat");
-    
+    cmd.arg(input_path).arg("cat");
+
     for page in &pages_to_keep {
         cmd.arg(page);
     }
-    
-    cmd.arg("output")
-        .arg(output_path);
-    
+
+    cmd.arg("output").arg(output_path);
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run pdftk: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -341,7 +338,7 @@ pub fn remove_pages<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Removed {} pages", pages_to_remove.len()),
         output_path,
@@ -351,7 +348,7 @@ pub fn remove_pages<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_invalid_range() {
         let result = extract_pages("input.pdf", "output.pdf", 5, 2);

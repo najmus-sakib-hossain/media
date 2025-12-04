@@ -27,7 +27,7 @@ impl ImageFormat {
             ImageFormat::Bmp => "bmp",
         }
     }
-    
+
     /// Get Ghostscript device name.
     fn gs_device(&self) -> &str {
         match self {
@@ -72,7 +72,7 @@ impl PdfToImageOptions {
             ..Default::default()
         }
     }
-    
+
     /// Web-optimized JPEG output.
     pub fn web_jpeg() -> Self {
         Self {
@@ -109,7 +109,7 @@ pub fn pdf_to_images_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -117,41 +117,41 @@ pub fn pdf_to_images_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let pattern = output_dir.join(format!("page_%03d.{}", options.format.extension()));
-    
+
     let gs_cmd = if cfg!(windows) { "gswin64c" } else { "gs" };
-    
+
     let mut cmd = Command::new(gs_cmd);
     cmd.arg(format!("-sDEVICE={}", options.format.gs_device()))
         .arg(format!("-r{}", options.dpi))
         .arg("-dNOPAUSE")
         .arg("-dBATCH")
         .arg("-dSAFER");
-    
+
     if matches!(options.format, ImageFormat::Jpeg) {
         cmd.arg(format!("-dJPEGQ={}", options.quality));
     }
-    
+
     if let Some((start, end)) = options.pages {
         cmd.arg(format!("-dFirstPage={}", start))
             .arg(format!("-dLastPage={}", end));
     }
-    
+
     cmd.arg(format!("-sOutputFile={}", pattern.to_string_lossy()))
         .arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run Ghostscript: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -161,14 +161,15 @@ pub fn pdf_to_images_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     // Count output files
     let images: Vec<_> = std::fs::read_dir(output_dir)
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
                 .filter(|e| {
-                    e.path().extension()
+                    e.path()
+                        .extension()
                         .and_then(|ext| ext.to_str())
                         .map(|ext| ext == options.format.extension())
                         .unwrap_or(false)
@@ -177,13 +178,14 @@ pub fn pdf_to_images_with_options<P: AsRef<Path>>(
                 .collect()
         })
         .unwrap_or_default();
-    
+
     Ok(ToolOutput::success(format!(
         "Converted PDF to {} {} images at {} DPI",
         images.len(),
         options.format.extension().to_uppercase(),
         options.dpi
-    )).with_paths(images))
+    ))
+    .with_paths(images))
 }
 
 /// Convert single PDF page to image.
@@ -195,7 +197,7 @@ pub fn pdf_page_to_image<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -203,9 +205,9 @@ pub fn pdf_page_to_image<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let gs_cmd = if cfg!(windows) { "gswin64c" } else { "gs" };
-    
+
     let mut cmd = Command::new(gs_cmd);
     cmd.arg(format!("-sDEVICE={}", options.format.gs_device()))
         .arg(format!("-r{}", options.dpi))
@@ -214,19 +216,19 @@ pub fn pdf_page_to_image<P: AsRef<Path>>(
         .arg("-dSAFER")
         .arg(format!("-dFirstPage={}", page))
         .arg(format!("-dLastPage={}", page));
-    
+
     if matches!(options.format, ImageFormat::Jpeg) {
         cmd.arg(format!("-dJPEGQ={}", options.quality));
     }
-    
+
     cmd.arg(format!("-sOutputFile={}", output_path.to_string_lossy()))
         .arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run Ghostscript: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -236,7 +238,7 @@ pub fn pdf_page_to_image<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Converted page {} to image", page),
         output_path,
@@ -255,11 +257,7 @@ pub fn pdf_thumbnail<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> 
 }
 
 /// Create PDF preview (first few pages as images).
-pub fn pdf_preview<P: AsRef<Path>>(
-    input: P,
-    output_dir: P,
-    max_pages: u32,
-) -> Result<ToolOutput> {
+pub fn pdf_preview<P: AsRef<Path>>(input: P, output_dir: P, max_pages: u32) -> Result<ToolOutput> {
     let options = PdfToImageOptions {
         format: ImageFormat::Jpeg,
         dpi: 150,
@@ -281,25 +279,28 @@ pub fn batch_pdf_to_images<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut total_images = 0;
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
             .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("pdf");
-        
+
         let pdf_output_dir = output_dir.join(file_stem);
-        
-        if let Ok(result) = pdf_to_images_with_options(input_path, &pdf_output_dir, options.clone()) {
-            total_images += result.metadata.get("count")
+
+        if let Ok(result) = pdf_to_images_with_options(input_path, &pdf_output_dir, options.clone())
+        {
+            total_images += result
+                .metadata
+                .get("count")
                 .and_then(|s| s.parse::<usize>().ok())
                 .unwrap_or(0);
         }
     }
-    
+
     Ok(ToolOutput::success(format!(
         "Converted {} PDFs to approximately {} images",
         inputs.len(),
@@ -310,18 +311,18 @@ pub fn batch_pdf_to_images<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_image_format() {
         assert_eq!(ImageFormat::Png.extension(), "png");
         assert_eq!(ImageFormat::Jpeg.gs_device(), "jpeg");
     }
-    
+
     #[test]
     fn test_options() {
         let high = PdfToImageOptions::high_quality_png();
         assert_eq!(high.dpi, 300);
-        
+
         let web = PdfToImageOptions::web_jpeg();
         assert!(matches!(web.format, ImageFormat::Jpeg));
     }

@@ -4,7 +4,7 @@
 
 use crate::error::{DxError, Result};
 use crate::tools::ToolOutput;
-use image::{DynamicImage, Rgba, GenericImageView, GenericImage};
+use image::{DynamicImage, GenericImage, GenericImageView, Rgba};
 use std::path::Path;
 
 /// Watermark position on the image.
@@ -80,7 +80,7 @@ impl WatermarkOptions {
             ..Default::default()
         }
     }
-    
+
     /// Create image watermark options.
     pub fn image<P: AsRef<Path>>(path: P) -> Self {
         Self {
@@ -88,37 +88,37 @@ impl WatermarkOptions {
             ..Default::default()
         }
     }
-    
+
     /// Set watermark position.
     pub fn at(mut self, position: WatermarkPosition) -> Self {
         self.position = position;
         self
     }
-    
+
     /// Set opacity (0.0 - 1.0).
     pub fn with_opacity(mut self, opacity: f32) -> Self {
         self.opacity = opacity.clamp(0.0, 1.0);
         self
     }
-    
+
     /// Set font size for text watermarks.
     pub fn with_font_size(mut self, size: f32) -> Self {
         self.font_size = size;
         self
     }
-    
+
     /// Set color for text watermarks.
     pub fn with_color(mut self, r: u8, g: u8, b: u8, a: u8) -> Self {
         self.color = [r, g, b, a];
         self
     }
-    
+
     /// Set margin from edges.
     pub fn with_margin(mut self, margin: u32) -> Self {
         self.margin = margin;
         self
     }
-    
+
     /// Set scale for image watermarks.
     pub fn with_scale(mut self, scale: f32) -> Self {
         self.scale = scale;
@@ -150,13 +150,13 @@ pub fn add_watermark<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let mut img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     if let Some(watermark_path) = &options.image_path {
         // Image watermark
         img = add_image_watermark(img, watermark_path, &options)?;
@@ -169,13 +169,13 @@ pub fn add_watermark<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     img.save(output_path).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to save watermarked image: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Added watermark to {}", input_path.display()),
         output_path,
@@ -193,7 +193,7 @@ fn add_image_watermark<P: AsRef<Path>>(
         message: format!("Failed to open watermark image: {}", e),
         source: None,
     })?;
-    
+
     // Scale watermark if needed
     let watermark = if (options.scale - 1.0).abs() > 0.01 {
         let new_width = (watermark.width() as f32 * options.scale) as u32;
@@ -202,70 +202,71 @@ fn add_image_watermark<P: AsRef<Path>>(
     } else {
         watermark
     };
-    
+
     let (base_w, base_h) = base.dimensions();
     let (wm_w, wm_h) = watermark.dimensions();
-    
+
     // Calculate position
-    let (x, y) = calculate_position(
-        base_w, base_h,
-        wm_w, wm_h,
-        options.position,
-        options.margin,
-    );
-    
+    let (x, y) = calculate_position(base_w, base_h, wm_w, wm_h, options.position, options.margin);
+
     // Overlay with opacity
     let watermark_rgba = watermark.to_rgba8();
     let mut base_rgba = base.to_rgba8();
-    
+
     for wy in 0..wm_h {
         for wx in 0..wm_w {
             let bx = x + wx;
             let by = y + wy;
-            
+
             if bx < base_w && by < base_h {
                 let wm_pixel = watermark_rgba.get_pixel(wx, wy);
                 let base_pixel = base_rgba.get_pixel(bx, by);
-                
+
                 // Blend with opacity
                 let alpha = (wm_pixel[3] as f32 / 255.0) * options.opacity;
                 let inv_alpha = 1.0 - alpha;
-                
+
                 let blended = Rgba([
                     (wm_pixel[0] as f32 * alpha + base_pixel[0] as f32 * inv_alpha) as u8,
                     (wm_pixel[1] as f32 * alpha + base_pixel[1] as f32 * inv_alpha) as u8,
                     (wm_pixel[2] as f32 * alpha + base_pixel[2] as f32 * inv_alpha) as u8,
                     255,
                 ]);
-                
+
                 base_rgba.put_pixel(bx, by, blended);
             }
         }
     }
-    
+
     Ok(DynamicImage::ImageRgba8(base_rgba))
 }
 
 /// Add a simple text watermark (without external font dependencies).
-fn add_text_watermark_simple(base: DynamicImage, text: &str, options: &WatermarkOptions) -> DynamicImage {
+fn add_text_watermark_simple(
+    base: DynamicImage,
+    text: &str,
+    options: &WatermarkOptions,
+) -> DynamicImage {
     let mut base_rgba = base.to_rgba8();
     let (base_w, base_h) = base_rgba.dimensions();
-    
+
     // Simple text rendering: create a colored band with the text pattern
     // For production, use imageproc + rusttype for proper text rendering
-    
+
     // Estimate text box size (rough approximation)
     let char_width = (options.font_size * 0.6) as u32;
     let text_width = (text.len() as u32 * char_width).min(base_w - options.margin * 2);
     let text_height = (options.font_size * 1.5) as u32;
-    
+
     let (x, y) = calculate_position(
-        base_w, base_h,
-        text_width, text_height,
+        base_w,
+        base_h,
+        text_width,
+        text_height,
         options.position,
         options.margin,
     );
-    
+
     // Draw a semi-transparent background for the watermark
     let bg_color = Rgba([0, 0, 0, (128.0 * options.opacity) as u8]);
     let fg_color = Rgba([
@@ -274,7 +275,7 @@ fn add_text_watermark_simple(base: DynamicImage, text: &str, options: &Watermark
         options.color[2],
         (options.color[3] as f32 * options.opacity) as u8,
     ]);
-    
+
     // Draw background
     for py in y.saturating_sub(5)..(y + text_height + 5).min(base_h) {
         for px in x.saturating_sub(10)..(x + text_width + 10).min(base_w) {
@@ -290,13 +291,15 @@ fn add_text_watermark_simple(base: DynamicImage, text: &str, options: &Watermark
             base_rgba.put_pixel(px, py, blended);
         }
     }
-    
+
     // Draw simple text pattern (placeholder for proper text rendering)
     // Each character is represented by a simple block
     for (i, _ch) in text.chars().enumerate() {
         let cx = x + (i as u32 * char_width);
-        if cx + char_width > base_w { break; }
-        
+        if cx + char_width > base_w {
+            break;
+        }
+
         // Draw character block
         for py in y..(y + text_height.min(base_h - y)) {
             for px in cx..(cx + char_width - 2).min(base_w) {
@@ -315,14 +318,16 @@ fn add_text_watermark_simple(base: DynamicImage, text: &str, options: &Watermark
             }
         }
     }
-    
+
     DynamicImage::ImageRgba8(base_rgba)
 }
 
 /// Calculate watermark position based on alignment.
 fn calculate_position(
-    base_w: u32, base_h: u32,
-    wm_w: u32, wm_h: u32,
+    base_w: u32,
+    base_h: u32,
+    wm_w: u32,
+    wm_h: u32,
     position: WatermarkPosition,
     margin: u32,
 ) -> (u32, u32) {
@@ -350,24 +355,24 @@ pub fn add_tiled_watermark<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let base = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     let watermark = image::open(watermark_path.as_ref()).map_err(|e| DxError::FileIo {
         path: watermark_path.as_ref().to_path_buf(),
         message: format!("Failed to open watermark: {}", e),
         source: None,
     })?;
-    
+
     let (base_w, base_h) = base.dimensions();
     let (wm_w, wm_h) = watermark.dimensions();
     let watermark_rgba = watermark.to_rgba8();
     let mut base_rgba = base.to_rgba8();
-    
+
     // Tile watermark across image
     let mut y = 0u32;
     while y < base_h {
@@ -378,21 +383,21 @@ pub fn add_tiled_watermark<P: AsRef<Path>>(
                 for wx in 0..wm_w {
                     let bx = x + wx;
                     let by = y + wy;
-                    
+
                     if bx < base_w && by < base_h {
                         let wm_pixel = watermark_rgba.get_pixel(wx, wy);
                         let base_pixel = base_rgba.get_pixel(bx, by);
-                        
+
                         let alpha = (wm_pixel[3] as f32 / 255.0) * opacity;
                         let inv_alpha = 1.0 - alpha;
-                        
+
                         let blended = Rgba([
                             (wm_pixel[0] as f32 * alpha + base_pixel[0] as f32 * inv_alpha) as u8,
                             (wm_pixel[1] as f32 * alpha + base_pixel[1] as f32 * inv_alpha) as u8,
                             (wm_pixel[2] as f32 * alpha + base_pixel[2] as f32 * inv_alpha) as u8,
                             255,
                         ]);
-                        
+
                         base_rgba.put_pixel(bx, by, blended);
                     }
                 }
@@ -401,14 +406,14 @@ pub fn add_tiled_watermark<P: AsRef<Path>>(
         }
         y += wm_h + spacing;
     }
-    
+
     let result = DynamicImage::ImageRgba8(base_rgba);
     result.save(output_path).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to save image: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         "Added tiled watermark",
         output_path,
@@ -418,18 +423,18 @@ pub fn add_tiled_watermark<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_watermark_options() {
         let opts = WatermarkOptions::text("Test")
             .at(WatermarkPosition::BottomRight)
             .with_opacity(0.5);
-        
+
         assert_eq!(opts.text, Some("Test".to_string()));
         assert_eq!(opts.position, WatermarkPosition::BottomRight);
         assert!((opts.opacity - 0.5).abs() < 0.01);
     }
-    
+
     #[test]
     fn test_position_calculation() {
         let (x, y) = calculate_position(1000, 800, 100, 50, WatermarkPosition::BottomRight, 20);

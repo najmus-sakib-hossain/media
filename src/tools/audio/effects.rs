@@ -15,24 +15,15 @@ pub enum AudioEffect {
     /// Change pitch without affecting speed.
     Pitch(f32),
     /// Add echo effect.
-    Echo {
-        delay: f64,
-        decay: f32,
-    },
+    Echo { delay: f64, decay: f32 },
     /// Add reverb effect.
-    Reverb {
-        room_size: f32,
-        damping: f32,
-    },
+    Reverb { room_size: f32, damping: f32 },
     /// Low-pass filter.
     LowPass(u32),
     /// High-pass filter.
     HighPass(u32),
     /// Band-pass filter.
-    BandPass {
-        low: u32,
-        high: u32,
-    },
+    BandPass { low: u32, high: u32 },
     /// Bass boost.
     BassBoost(f32),
     /// Treble boost.
@@ -40,10 +31,7 @@ pub enum AudioEffect {
     /// Equalizer (10-band).
     Equalizer(Vec<f32>),
     /// Compression/limiting.
-    Compressor {
-        threshold: f32,
-        ratio: f32,
-    },
+    Compressor { threshold: f32, ratio: f32 },
     /// Distortion.
     Distortion(f32),
     /// Flanger effect.
@@ -121,7 +109,7 @@ impl AudioEffect {
             AudioEffect::Custom(filter) => filter.clone(),
         }
     }
-    
+
     /// Get human-readable name.
     pub fn name(&self) -> &str {
         match self {
@@ -172,7 +160,7 @@ pub fn apply_effect<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -180,27 +168,29 @@ pub fn apply_effect<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let filter = effect.to_filter();
-    
+
     if filter.is_empty() {
         return Err(DxError::Config {
             message: "Invalid effect configuration".to_string(),
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -210,7 +200,7 @@ pub fn apply_effect<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Applied {} effect", effect.name()),
         output_path,
@@ -225,7 +215,7 @@ pub fn apply_effects<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -233,32 +223,35 @@ pub fn apply_effects<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     if effects.is_empty() {
         return Err(DxError::Config {
             message: "No effects provided".to_string(),
             source: None,
         });
     }
-    
-    let filters: Vec<String> = effects.iter()
+
+    let filters: Vec<String> = effects
+        .iter()
         .map(|e| e.to_filter())
         .filter(|f| !f.is_empty())
         .collect();
-    
+
     let filter_chain = filters.join(",");
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter_chain)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter_chain)
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -268,7 +261,7 @@ pub fn apply_effects<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let names: Vec<&str> = effects.iter().map(|e| e.name()).collect();
     Ok(ToolOutput::success_with_path(
         format!("Applied {} effects: {}", effects.len(), names.join(", ")),
@@ -281,7 +274,10 @@ pub fn telephone_effect<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutpu
     apply_effect(
         input,
         output,
-        AudioEffect::BandPass { low: 300, high: 3400 },
+        AudioEffect::BandPass {
+            low: 300,
+            high: 3400,
+        },
     )
 }
 
@@ -292,7 +288,10 @@ pub fn underwater_effect<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutp
         output,
         &[
             AudioEffect::LowPass(500),
-            AudioEffect::Reverb { room_size: 0.8, damping: 0.5 },
+            AudioEffect::Reverb {
+                room_size: 0.8,
+                damping: 0.5,
+            },
         ],
     )
 }
@@ -328,10 +327,10 @@ pub fn batch_effect<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut processed = Vec::new();
     let effect_name = effect.name();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_name = input_path
@@ -339,32 +338,33 @@ pub fn batch_effect<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("audio.mp3");
         let output_path = output_dir.join(format!("fx_{}", file_name));
-        
+
         if apply_effect(input_path, &output_path, effect.clone()).is_ok() {
             processed.push(output_path);
         }
     }
-    
+
     Ok(ToolOutput::success(format!(
         "Applied {} to {} files",
         effect_name,
         processed.len()
-    )).with_paths(processed))
+    ))
+    .with_paths(processed))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_effect_filters() {
         let speed = AudioEffect::Speed(1.5);
         assert!(speed.to_filter().contains("atempo"));
-        
+
         let bass = AudioEffect::BassBoost(6.0);
         assert!(bass.to_filter().contains("bass"));
     }
-    
+
     #[test]
     fn test_effect_names() {
         assert_eq!(AudioEffect::Reverse.name(), "Reverse");

@@ -1,7 +1,7 @@
 //! Met Museum Open Access provider implementation.
 //!
 //! [Met Museum API](https://metmuseum.github.io/)
-//! 
+//!
 //! Provides access to 500,000+ CC0 licensed artworks from the Metropolitan Museum of Art.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Met Museum Open Access provider for artwork images.
 /// Access to 500K+ CC0 licensed images of artworks.
@@ -43,15 +41,15 @@ impl MetMuseumProvider {
     /// Fetch object details by ID
     async fn fetch_object(&self, object_id: u64) -> Result<Option<MetObject>> {
         let url = format!("{}/objects/{}", self.base_url(), object_id);
-        
+
         let response = self.client.get(&url).await?;
-        
+
         if !response.status().is_success() {
             return Ok(None);
         }
-        
+
         let obj: MetObject = response.json_or_error().await?;
-        
+
         // Only return objects that have images and are public domain
         if obj.is_public_domain && obj.primary_image.is_some() {
             Ok(Some(obj))
@@ -94,7 +92,7 @@ impl Provider for MetMuseumProvider {
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         // First, search for object IDs
         let search_url = format!("{}/search", self.base_url());
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("hasImages", "true"),
@@ -110,9 +108,16 @@ impl Provider for MetMuseumProvider {
 
         // Get paginated subset of object IDs
         let start = (query.page - 1) * query.count;
-        let end = (start + query.count).min(search_response.object_ids.as_ref().map(|v| v.len()).unwrap_or(0));
-        
-        let object_ids = search_response.object_ids
+        let end = (start + query.count).min(
+            search_response
+                .object_ids
+                .as_ref()
+                .map(|v| v.len())
+                .unwrap_or(0),
+        );
+
+        let object_ids = search_response
+            .object_ids
             .as_ref()
             .map(|ids| ids[start..end].to_vec())
             .unwrap_or_default();
@@ -121,7 +126,8 @@ impl Provider for MetMuseumProvider {
         let mut assets = Vec::new();
         for object_id in object_ids.into_iter().take(query.count) {
             if let Ok(Some(obj)) = self.fetch_object(object_id).await {
-                let tags: Vec<String> = obj.tags
+                let tags: Vec<String> = obj
+                    .tags
                     .unwrap_or_default()
                     .into_iter()
                     .map(|t| t.term)
@@ -131,15 +137,24 @@ impl Provider for MetMuseumProvider {
                     .id(obj.object_id.to_string())
                     .provider("met")
                     .media_type(MediaType::Image)
-                    .title(obj.title.unwrap_or_else(|| "Met Museum Artwork".to_string()))
+                    .title(
+                        obj.title
+                            .unwrap_or_else(|| "Met Museum Artwork".to_string()),
+                    )
                     .download_url(obj.primary_image.clone().unwrap_or_default())
-                    .preview_url(obj.primary_image_small.unwrap_or_else(|| obj.primary_image.unwrap_or_default()))
+                    .preview_url(
+                        obj.primary_image_small
+                            .unwrap_or_else(|| obj.primary_image.unwrap_or_default()),
+                    )
                     .source_url(obj.object_url)
-                    .author(obj.artist_display_name.unwrap_or_else(|| "Unknown Artist".to_string()))
+                    .author(
+                        obj.artist_display_name
+                            .unwrap_or_else(|| "Unknown Artist".to_string()),
+                    )
                     .license(License::Cc0)
                     .tags(tags)
                     .build();
-                
+
                 assets.push(asset);
             }
         }
@@ -221,7 +236,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = MetMuseumProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "met");
         assert_eq!(provider.display_name(), "Met Museum");
         assert!(!provider.requires_api_key());
@@ -232,7 +247,7 @@ mod tests {
     fn test_supported_media_types() {
         let config = Config::default_for_testing();
         let provider = MetMuseumProvider::new(&config);
-        
+
         let types = provider.supported_media_types();
         assert!(types.contains(&MediaType::Image));
     }

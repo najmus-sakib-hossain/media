@@ -10,9 +10,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Pixabay provider for free images and videos.
 #[derive(Debug)]
@@ -123,11 +121,8 @@ impl Provider for PixabayProvider {
                     .or(Some(hit.web_format_url.clone()))
                     .unwrap_or_else(|| hit.preview_url.clone());
 
-                let tags: Vec<String> = hit
-                    .tags
-                    .split(", ")
-                    .map(|s| s.trim().to_string())
-                    .collect();
+                let tags: Vec<String> =
+                    hit.tags.split(", ").map(|s| s.trim().to_string()).collect();
 
                 MediaAsset::builder()
                     .id(hit.id.to_string())
@@ -142,7 +137,10 @@ impl Provider for PixabayProvider {
                     .preview_url(hit.preview_url)
                     .source_url(hit.page_url)
                     .author(hit.user.clone())
-                    .author_url(format!("https://pixabay.com/users/{}-{}/", hit.user, hit.user_id))
+                    .author_url(format!(
+                        "https://pixabay.com/users/{}-{}/",
+                        hit.user, hit.user_id
+                    ))
                     .license(License::Pixabay)
                     .dimensions(hit.image_width, hit.image_height)
                     .tags(tags)
@@ -166,7 +164,7 @@ impl PixabayProvider {
     /// Search for videos using Pixabay video API endpoint.
     async fn search_videos(&self, api_key: &str, query: &SearchQuery) -> Result<SearchResult> {
         let video_url = "https://pixabay.com/api/videos/";
-        
+
         let params = [
             ("key", api_key),
             ("q", query.query.as_str()),
@@ -175,10 +173,7 @@ impl PixabayProvider {
             ("safesearch", "true"),
         ];
 
-        let response = self
-            .client
-            .get_with_query(video_url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(video_url, &params, &[]).await?;
 
         let api_response: PixabayVideoSearchResponse = response.json_or_error().await?;
 
@@ -186,28 +181,30 @@ impl PixabayProvider {
             .hits
             .into_iter()
             .map(|hit| {
-                let tags: Vec<String> = hit
-                    .tags
-                    .split(", ")
-                    .map(|s| s.trim().to_string())
-                    .collect();
+                let tags: Vec<String> =
+                    hit.tags.split(", ").map(|s| s.trim().to_string()).collect();
 
                 // Get the best quality video URL available
-                let download_url = hit.videos.large.as_ref()
+                let download_url = hit
+                    .videos
+                    .large
+                    .as_ref()
                     .or(hit.videos.medium.as_ref())
                     .or(hit.videos.small.as_ref())
                     .map(|v| v.url.clone())
                     .unwrap_or_default();
 
-                let (width, height) = hit.videos.large.as_ref()
+                let (width, height) = hit
+                    .videos
+                    .large
+                    .as_ref()
                     .or(hit.videos.medium.as_ref())
                     .or(hit.videos.small.as_ref())
                     .map(|v| (v.width, v.height))
                     .unwrap_or((0, 0));
 
                 // Use tiny video as preview
-                let preview_url = hit.videos.tiny.as_ref()
-                    .map(|v| v.url.clone());
+                let preview_url = hit.videos.tiny.as_ref().map(|v| v.url.clone());
 
                 MediaAsset::builder()
                     .id(hit.id.to_string())
@@ -222,7 +219,10 @@ impl PixabayProvider {
                     .preview_url(preview_url.unwrap_or_default())
                     .source_url(hit.page_url)
                     .author(hit.user.clone())
-                    .author_url(format!("https://pixabay.com/users/{}-{}/", hit.user, hit.user_id))
+                    .author_url(format!(
+                        "https://pixabay.com/users/{}-{}/",
+                        hit.user, hit.user_id
+                    ))
                     .license(License::Pixabay)
                     .dimensions(width, height)
                     .tags(tags)
@@ -273,54 +273,54 @@ struct PixabaySearchResponse {
 #[allow(dead_code)] // Fields used for JSON deserialization
 struct PixabayHit {
     id: u64,
-    
+
     #[serde(rename = "pageURL")]
     page_url: String,
-    
+
     #[serde(rename = "type", default)]
     hit_type: String,
-    
+
     tags: String,
-    
+
     #[serde(rename = "previewURL")]
     preview_url: String,
-    
+
     #[serde(rename = "previewWidth")]
     preview_width: u32,
-    
+
     #[serde(rename = "previewHeight")]
     preview_height: u32,
-    
+
     #[serde(rename = "webformatURL")]
     web_format_url: String,
-    
+
     #[serde(rename = "webformatWidth")]
     web_format_width: u32,
-    
+
     #[serde(rename = "webformatHeight")]
     web_format_height: u32,
-    
+
     #[serde(rename = "largeImageURL")]
     large_image_url: Option<String>,
-    
+
     #[serde(rename = "imageWidth")]
     image_width: u32,
-    
+
     #[serde(rename = "imageHeight")]
     image_height: u32,
-    
+
     #[serde(rename = "imageSize")]
     image_size: u64,
-    
+
     views: u64,
     downloads: u64,
     likes: u64,
-    
+
     user: String,
-    
+
     #[serde(rename = "user_id")]
     user_id: u64,
-    
+
     #[serde(rename = "userImageURL")]
     user_image_url: String,
 }
@@ -342,28 +342,28 @@ struct PixabayVideoSearchResponse {
 #[allow(dead_code)]
 struct PixabayVideoHit {
     id: u64,
-    
+
     #[serde(rename = "pageURL")]
     page_url: String,
-    
+
     #[serde(rename = "type", default)]
     hit_type: String,
-    
+
     tags: String,
-    
+
     duration: u32,
-    
+
     videos: PixabayVideoSizes,
-    
+
     views: u64,
     downloads: u64,
     likes: u64,
-    
+
     user: String,
-    
+
     #[serde(rename = "user_id")]
     user_id: u64,
-    
+
     #[serde(rename = "userImageURL")]
     user_image_url: String,
 }
@@ -394,7 +394,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = PixabayProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "pixabay");
         assert_eq!(provider.display_name(), "Pixabay");
         assert!(provider.requires_api_key());
@@ -405,7 +405,7 @@ mod tests {
     fn test_supported_media_types() {
         let config = Config::default_for_testing();
         let provider = PixabayProvider::new(&config);
-        
+
         let types = provider.supported_media_types();
         assert!(types.contains(&MediaType::Image));
         assert!(types.contains(&MediaType::Video));

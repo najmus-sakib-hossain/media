@@ -25,7 +25,7 @@ use std::process::Command;
 pub fn trim_audio<P: AsRef<Path>>(input: P, output: P, start: f64, end: f64) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -33,29 +33,33 @@ pub fn trim_audio<P: AsRef<Path>>(input: P, output: P, start: f64, end: f64) -> 
             source: None,
         });
     }
-    
+
     if start >= end {
         return Err(DxError::Config {
             message: "Start time must be less than end time".to_string(),
             source: None,
         });
     }
-    
+
     let duration = end - start;
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-ss").arg(format!("{:.3}", start))
-        .arg("-t").arg(format!("{:.3}", duration))
-        .arg("-c").arg("copy")  // Stream copy for fast trimming
+        .arg("-i")
+        .arg(input_path)
+        .arg("-ss")
+        .arg(format!("{:.3}", start))
+        .arg("-t")
+        .arg(format!("{:.3}", duration))
+        .arg("-c")
+        .arg("copy") // Stream copy for fast trimming
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -65,15 +69,23 @@ pub fn trim_audio<P: AsRef<Path>>(input: P, output: P, start: f64, end: f64) -> 
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
-        format!("Trimmed {:.1}s segment ({:.1}s to {:.1}s)", duration, start, end),
+        format!(
+            "Trimmed {:.1}s segment ({:.1}s to {:.1}s)",
+            duration, start, end
+        ),
         output_path,
     ))
 }
 
 /// Trim from start for specified duration.
-pub fn trim_duration<P: AsRef<Path>>(input: P, output: P, start: f64, duration: f64) -> Result<ToolOutput> {
+pub fn trim_duration<P: AsRef<Path>>(
+    input: P,
+    output: P,
+    start: f64,
+    duration: f64,
+) -> Result<ToolOutput> {
     trim_audio(input, output, start, start + duration)
 }
 
@@ -86,29 +98,32 @@ pub fn extract_beginning<P: AsRef<Path>>(input: P, output: P, duration: f64) -> 
 pub fn extract_ending<P: AsRef<Path>>(input: P, output: P, duration: f64) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     // Get total duration
     let total_duration = get_audio_duration(input_path)?;
     let start = (total_duration - duration).max(0.0);
-    
+
     trim_audio(input_path, output_path, start, total_duration)
 }
 
 /// Get audio duration in seconds.
 pub fn get_audio_duration<P: AsRef<Path>>(input: P) -> Result<f64> {
     let input_path = input.as_ref();
-    
+
     let mut cmd = Command::new("ffprobe");
-    cmd.arg("-v").arg("error")
-        .arg("-show_entries").arg("format=duration")
-        .arg("-of").arg("default=noprint_wrappers=1:nokey=1")
+    cmd.arg("-v")
+        .arg("error")
+        .arg("-show_entries")
+        .arg("format=duration")
+        .arg("-of")
+        .arg("default=noprint_wrappers=1:nokey=1")
         .arg(input_path);
-    
+
     let output = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run ffprobe: {}", e),
         source: None,
     })?;
-    
+
     let duration_str = String::from_utf8_lossy(&output.stdout);
     duration_str.trim().parse().map_err(|_| DxError::Config {
         message: "Failed to parse duration".to_string(),
@@ -125,7 +140,7 @@ pub fn cut_segment<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -133,27 +148,30 @@ pub fn cut_segment<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let total_duration = get_audio_duration(input_path)?;
-    
+
     // Use complex filter to concatenate before and after segments
     let filter = format!(
         "[0:a]atrim=end={},asetpts=PTS-STARTPTS[before];[0:a]atrim=start={},asetpts=PTS-STARTPTS[after];[before][after]concat=n=2:v=0:a=1[out]",
         cut_start, cut_end
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-filter_complex").arg(&filter)
-        .arg("-map").arg("[out]")
+        .arg("-i")
+        .arg(input_path)
+        .arg("-filter_complex")
+        .arg(&filter)
+        .arg("-map")
+        .arg("[out]")
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -163,10 +181,13 @@ pub fn cut_segment<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let cut_duration = cut_end - cut_start;
     Ok(ToolOutput::success_with_path(
-        format!("Removed {:.1}s segment ({:.1}s to {:.1}s)", cut_duration, cut_start, cut_end),
+        format!(
+            "Removed {:.1}s segment ({:.1}s to {:.1}s)",
+            cut_duration, cut_start, cut_end
+        ),
         output_path,
     ))
 }
@@ -175,20 +196,22 @@ pub fn cut_segment<P: AsRef<Path>>(
 pub fn fade_in<P: AsRef<Path>>(input: P, output: P, duration: f64) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let filter = format!("afade=t=in:st=0:d={}", duration);
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -198,7 +221,7 @@ pub fn fade_in<P: AsRef<Path>>(input: P, output: P, duration: f64) -> Result<Too
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Added {:.1}s fade in", duration),
         output_path,
@@ -209,23 +232,25 @@ pub fn fade_in<P: AsRef<Path>>(input: P, output: P, duration: f64) -> Result<Too
 pub fn fade_out<P: AsRef<Path>>(input: P, output: P, duration: f64) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let total_duration = get_audio_duration(input_path)?;
     let fade_start = total_duration - duration;
-    
+
     let filter = format!("afade=t=out:st={}:d={}", fade_start, duration);
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -235,7 +260,7 @@ pub fn fade_out<P: AsRef<Path>>(input: P, output: P, duration: f64) -> Result<To
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Added {:.1}s fade out", duration),
         output_path,
@@ -251,26 +276,28 @@ pub fn add_fades<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let total_duration = get_audio_duration(input_path)?;
     let fade_out_start = total_duration - fade_out_duration;
-    
+
     let filter = format!(
         "afade=t=in:st=0:d={},afade=t=out:st={}:d={}",
         fade_in_duration, fade_out_start, fade_out_duration
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -280,9 +307,12 @@ pub fn add_fades<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
-        format!("Added {:.1}s fade in and {:.1}s fade out", fade_in_duration, fade_out_duration),
+        format!(
+            "Added {:.1}s fade in and {:.1}s fade out",
+            fade_in_duration, fade_out_duration
+        ),
         output_path,
     ))
 }
@@ -300,9 +330,9 @@ pub fn batch_trim<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut trimmed = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_name = input_path
@@ -310,14 +340,13 @@ pub fn batch_trim<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("audio.mp3");
         let output_path = output_dir.join(format!("trim_{}", file_name));
-        
+
         if trim_audio(input_path, &output_path, start, end).is_ok() {
             trimmed.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Trimmed {} files", trimmed.len()))
-        .with_paths(trimmed))
+
+    Ok(ToolOutput::success(format!("Trimmed {} files", trimmed.len())).with_paths(trimmed))
 }
 
 #[cfg(test)]

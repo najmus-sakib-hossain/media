@@ -61,7 +61,7 @@ impl ConcatOptions {
             ..Default::default()
         }
     }
-    
+
     /// Enable re-encoding with common resolution.
     pub fn with_reencode(width: u32, height: u32) -> Self {
         Self {
@@ -103,9 +103,9 @@ pub fn concatenate_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let output_path = output.as_ref();
-    
+
     // Validate all inputs exist
     for input in inputs {
         let path = input.as_ref();
@@ -117,7 +117,7 @@ pub fn concatenate_with_options<P: AsRef<Path>>(
             });
         }
     }
-    
+
     match options.method {
         ConcatMethod::Demuxer => concat_demuxer(inputs, output_path, &options),
         ConcatMethod::Filter => concat_filter(inputs, output_path, &options),
@@ -134,7 +134,7 @@ fn concat_demuxer<P: AsRef<Path>>(
     // Create temporary file list
     let temp_dir = std::env::temp_dir();
     let list_path = temp_dir.join(format!("concat_list_{}.txt", std::process::id()));
-    
+
     // Write file list
     let mut list_content = String::new();
     for input in inputs {
@@ -150,37 +150,43 @@ fn concat_demuxer<P: AsRef<Path>>(
         let escaped = abs_path.to_string_lossy().replace("'", "'\\''");
         list_content.push_str(&format!("file '{}'\n", escaped));
     }
-    
+
     std::fs::write(&list_path, &list_content).map_err(|e| DxError::FileIo {
         path: list_path.clone(),
         message: format!("Failed to write file list: {}", e),
         source: None,
     })?;
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-f").arg("concat")
-        .arg("-safe").arg("0")
-        .arg("-i").arg(&list_path);
-    
+        .arg("-f")
+        .arg("concat")
+        .arg("-safe")
+        .arg("0")
+        .arg("-i")
+        .arg(&list_path);
+
     if options.reencode {
-        cmd.arg("-c:v").arg(&options.video_codec)
-            .arg("-crf").arg(options.quality.to_string())
-            .arg("-c:a").arg(&options.audio_codec);
+        cmd.arg("-c:v")
+            .arg(&options.video_codec)
+            .arg("-crf")
+            .arg(options.quality.to_string())
+            .arg("-c:a")
+            .arg(&options.audio_codec);
     } else {
         cmd.arg("-c").arg("copy");
     }
-    
+
     cmd.arg(output);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     // Clean up temp file
     let _ = std::fs::remove_file(&list_path);
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -190,13 +196,15 @@ fn concat_demuxer<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
-        format!("Concatenated {} videos ({} bytes)", inputs.len(), output_size),
+        format!(
+            "Concatenated {} videos ({} bytes)",
+            inputs.len(),
+            output_size
+        ),
         output,
     ))
 }
@@ -209,57 +217,55 @@ fn concat_filter<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y");
-    
+
     // Add all inputs
     for input in inputs {
         cmd.arg("-i").arg(input.as_ref());
     }
-    
+
     // Build filter complex
     let n = inputs.len();
     let mut filter_parts = Vec::new();
-    
+
     // Scale all inputs to same size if specified
     if let (Some(w), Some(h)) = (options.width, options.height) {
         for i in 0..n {
-            filter_parts.push(format!(
-                "[{}:v]scale={}:{},setsar=1[v{}]",
-                i, w, h, i
-            ));
+            filter_parts.push(format!("[{}:v]scale={}:{},setsar=1[v{}]", i, w, h, i));
         }
-        
+
         // Concatenate
         let video_streams: String = (0..n).map(|i| format!("[v{}]", i)).collect();
         let audio_streams: String = (0..n).map(|i| format!("[{}:a]", i)).collect();
-        
+
         filter_parts.push(format!(
             "{}{}concat=n={}:v=1:a=1[vout][aout]",
             video_streams, audio_streams, n
         ));
     } else {
         // Simple concatenate without scaling
-        let streams: String = (0..n)
-            .map(|i| format!("[{}:v][{}:a]", i, i))
-            .collect();
-        filter_parts.push(format!(
-            "{}concat=n={}:v=1:a=1[vout][aout]",
-            streams, n
-        ));
+        let streams: String = (0..n).map(|i| format!("[{}:v][{}:a]", i, i)).collect();
+        filter_parts.push(format!("{}concat=n={}:v=1:a=1[vout][aout]", streams, n));
     }
-    
-    cmd.arg("-filter_complex").arg(filter_parts.join(";"))
-        .arg("-map").arg("[vout]")
-        .arg("-map").arg("[aout]")
-        .arg("-c:v").arg(&options.video_codec)
-        .arg("-crf").arg(options.quality.to_string())
-        .arg("-c:a").arg(&options.audio_codec)
+
+    cmd.arg("-filter_complex")
+        .arg(filter_parts.join(";"))
+        .arg("-map")
+        .arg("[vout]")
+        .arg("-map")
+        .arg("[aout]")
+        .arg("-c:v")
+        .arg(&options.video_codec)
+        .arg("-crf")
+        .arg(options.quality.to_string())
+        .arg("-c:a")
+        .arg(&options.audio_codec)
         .arg(output);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -269,13 +275,15 @@ fn concat_filter<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
-        format!("Concatenated {} videos using filter ({} bytes)", inputs.len(), output_size),
+        format!(
+            "Concatenated {} videos using filter ({} bytes)",
+            inputs.len(),
+            output_size
+        ),
         output,
     ))
 }
@@ -288,18 +296,20 @@ fn concat_protocol<P: AsRef<Path>>(inputs: &[P], output: &Path) -> Result<ToolOu
         .map(|p| p.as_ref().to_string_lossy().to_string())
         .collect();
     let concat_str = format!("concat:{}", input_list.join("|"));
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(&concat_str)
-        .arg("-c").arg("copy")
+        .arg("-i")
+        .arg(&concat_str)
+        .arg("-c")
+        .arg("copy")
         .arg(output);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -309,7 +319,7 @@ fn concat_protocol<P: AsRef<Path>>(inputs: &[P], output: &Path) -> Result<ToolOu
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Concatenated {} videos", inputs.len()),
         output,
@@ -325,58 +335,64 @@ pub fn join_with_crossfade<P: AsRef<Path>>(
     if inputs.len() < 2 {
         return concatenate_videos(inputs, output);
     }
-    
+
     let output_path = output.as_ref();
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y");
-    
+
     // Add all inputs
     for input in inputs {
         cmd.arg("-i").arg(input.as_ref());
     }
-    
+
     // Build xfade filter
     let n = inputs.len();
     let mut filter_parts = Vec::new();
-    
+
     // First video stays as is
     let mut last_video = "[0:v]".to_string();
     let mut last_audio = "[0:a]".to_string();
-    
+
     for i in 1..n {
         let out_v = format!("[v{}]", i);
         let out_a = format!("[a{}]", i);
-        
+
         // Video crossfade
         filter_parts.push(format!(
             "{}[{}:v]xfade=transition=fade:duration={}:offset=0{}",
             last_video, i, crossfade_duration, out_v
         ));
-        
+
         // Audio crossfade
         filter_parts.push(format!(
             "{}[{}:a]acrossfade=d={}{}",
             last_audio, i, crossfade_duration, out_a
         ));
-        
+
         last_video = out_v;
         last_audio = out_a;
     }
-    
-    cmd.arg("-filter_complex").arg(filter_parts.join(";"))
-        .arg("-map").arg(&last_video)
-        .arg("-map").arg(&last_audio)
-        .arg("-c:v").arg("libx264")
-        .arg("-crf").arg("18")
-        .arg("-c:a").arg("aac")
+
+    cmd.arg("-filter_complex")
+        .arg(filter_parts.join(";"))
+        .arg("-map")
+        .arg(&last_video)
+        .arg("-map")
+        .arg(&last_audio)
+        .arg("-c:v")
+        .arg("libx264")
+        .arg("-crf")
+        .arg("18")
+        .arg("-c:a")
+        .arg("aac")
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -386,7 +402,7 @@ pub fn join_with_crossfade<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Joined {} videos with {}s crossfade", n, crossfade_duration),
         output_path,
@@ -396,14 +412,14 @@ pub fn join_with_crossfade<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_concat_options() {
         let opts = ConcatOptions::default();
         assert_eq!(opts.method, ConcatMethod::Demuxer);
         assert!(!opts.reencode);
     }
-    
+
     #[test]
     fn test_concat_options_with_filter() {
         let opts = ConcatOptions::with_filter();

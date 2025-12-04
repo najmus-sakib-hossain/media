@@ -70,7 +70,7 @@ pub struct TranscriptionSegment {
 /// ```
 pub fn transcribe<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -78,17 +78,19 @@ pub fn transcribe<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
             source: None,
         });
     }
-    
+
     // This is a placeholder - real implementation would call an API
     let mut output = ToolOutput::success(
-        "Speech recognition requires external API integration (Whisper, Google Speech, etc.)"
+        "Speech recognition requires external API integration (Whisper, Google Speech, etc.)",
     );
-    output.metadata.insert("status".to_string(), "not_implemented".to_string());
+    output
+        .metadata
+        .insert("status".to_string(), "not_implemented".to_string());
     output.metadata.insert(
         "suggestion".to_string(),
         "Use OpenAI Whisper or similar service for actual transcription".to_string(),
     );
-    
+
     Ok(output)
 }
 
@@ -107,7 +109,7 @@ pub fn transcribe_with_options<P: AsRef<Path>>(
 pub fn generate_subtitles<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -115,22 +117,25 @@ pub fn generate_subtitles<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOut
             source: None,
         });
     }
-    
+
     // Placeholder - write empty SRT
-    let placeholder_srt = "1\n00:00:00,000 --> 00:00:05,000\n[Speech recognition not available]\n\n";
-    
+    let placeholder_srt =
+        "1\n00:00:00,000 --> 00:00:05,000\n[Speech recognition not available]\n\n";
+
     std::fs::write(output_path, placeholder_srt).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to write output: {}", e),
         source: None,
     })?;
-    
+
     let mut output = ToolOutput::success_with_path(
         "Subtitle generation requires speech recognition API",
         output_path,
     );
-    output.metadata.insert("status".to_string(), "placeholder".to_string());
-    
+    output
+        .metadata
+        .insert("status".to_string(), "placeholder".to_string());
+
     Ok(output)
 }
 
@@ -139,7 +144,7 @@ pub fn generate_subtitles<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOut
 /// NOTE: Placeholder - requires speech recognition API.
 pub fn detect_language<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -147,10 +152,12 @@ pub fn detect_language<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
             source: None,
         });
     }
-    
+
     let mut output = ToolOutput::success("Language detection requires speech recognition API");
-    output.metadata.insert("status".to_string(), "not_implemented".to_string());
-    
+    output
+        .metadata
+        .insert("status".to_string(), "not_implemented".to_string());
+
     Ok(output)
 }
 
@@ -160,7 +167,7 @@ pub fn detect_language<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
 pub fn prepare_for_transcription<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -168,21 +175,25 @@ pub fn prepare_for_transcription<P: AsRef<Path>>(input: P, output: P) -> Result<
             source: None,
         });
     }
-    
+
     // Convert to 16kHz mono WAV (optimal for most speech APIs)
     let mut cmd = std::process::Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-ar").arg("16000")  // 16kHz sample rate
-        .arg("-ac").arg("1")      // Mono
-        .arg("-c:a").arg("pcm_s16le")  // 16-bit PCM
+        .arg("-i")
+        .arg(input_path)
+        .arg("-ar")
+        .arg("16000") // 16kHz sample rate
+        .arg("-ac")
+        .arg("1") // Mono
+        .arg("-c:a")
+        .arg("pcm_s16le") // 16-bit PCM
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -192,7 +203,7 @@ pub fn prepare_for_transcription<P: AsRef<Path>>(input: P, output: P) -> Result<
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Prepared audio for transcription (16kHz mono WAV)",
         output_path,
@@ -205,7 +216,7 @@ pub fn prepare_for_transcription<P: AsRef<Path>>(input: P, output: P) -> Result<
 pub fn extract_speech_segments<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -213,21 +224,21 @@ pub fn extract_speech_segments<P: AsRef<Path>>(input: P, output: P) -> Result<To
             source: None,
         });
     }
-    
+
     // Use silence removal as a basic VAD
     let options = super::silence::SilenceOptions {
-        threshold_db: -35.0,  // Higher threshold for speech
+        threshold_db: -35.0, // Higher threshold for speech
         min_duration: 0.3,
         padding: 0.1,
     };
-    
+
     super::silence::remove_silence(input_path, output_path, options)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_transcribe_options() {
         let options = TranscribeOptions::default();

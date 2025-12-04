@@ -5,7 +5,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::cli::args::{MediaTypeArg, OutputFormat, ScrapeArgs};
 use crate::config::Config;
-use crate::engine::{Scraper, ScrapeOptions};
+use crate::engine::{ScrapeOptions, Scraper};
 use crate::error::Result;
 use crate::types::MediaType;
 
@@ -87,10 +87,7 @@ pub async fn execute(args: ScrapeArgs, format: OutputFormat, quiet: bool) -> Res
             for asset in &result.assets {
                 println!(
                     "{}\t{}\t{:?}\t{}",
-                    asset.id,
-                    asset.title,
-                    asset.media_type,
-                    asset.download_url
+                    asset.id, asset.title, asset.media_type, asset.download_url
                 );
             }
         }
@@ -103,9 +100,13 @@ pub async fn execute(args: ScrapeArgs, format: OutputFormat, quiet: bool) -> Res
                     result.source_url.dimmed()
                 );
                 println!("  Pages scraped: {}", result.pages_scraped);
-                
+
                 if !result.errors.is_empty() {
-                    println!("\n{} {} errors encountered:", "⚠".yellow(), result.errors.len());
+                    println!(
+                        "\n{} {} errors encountered:",
+                        "⚠".yellow(),
+                        result.errors.len()
+                    );
                     for err in &result.errors {
                         println!("  {} {}", "•".dimmed(), err.dimmed());
                     }
@@ -127,14 +128,19 @@ pub async fn execute(args: ScrapeArgs, format: OutputFormat, quiet: bool) -> Res
                         MediaType::Code => "COD".on_bright_green(),
                         MediaType::Text => "TXT".on_bright_white(),
                     };
-                    
+
                     println!(
                         "{:>3}. {} {}",
                         i + 1,
                         type_badge,
-                        if asset.title.is_empty() { &asset.id } else { &asset.title }.white()
+                        if asset.title.is_empty() {
+                            &asset.id
+                        } else {
+                            &asset.title
+                        }
+                        .white()
                     );
-                    
+
                     if let (Some(w), Some(h)) = (asset.width, asset.height) {
                         println!("     {} {}x{}", "Size:".dimmed(), w, h);
                     }
@@ -156,9 +162,13 @@ pub async fn execute(args: ScrapeArgs, format: OutputFormat, quiet: bool) -> Res
 
         let config = Config::load()?;
         let downloader = Downloader::new(&config).with_download_dir(&output_dir);
-        
+
         if !quiet {
-            println!("\n{} Downloading {} assets...", "↓".cyan(), result.assets.len());
+            println!(
+                "\n{} Downloading {} assets...",
+                "↓".cyan(),
+                result.assets.len()
+            );
         }
 
         let pb = if !quiet {
@@ -177,7 +187,11 @@ pub async fn execute(args: ScrapeArgs, format: OutputFormat, quiet: bool) -> Res
         let mut downloaded = 0;
         for asset in &result.assets {
             if let Some(ref pb) = pb {
-                let msg = if asset.title.is_empty() { asset.id.clone() } else { asset.title.clone() };
+                let msg = if asset.title.is_empty() {
+                    asset.id.clone()
+                } else {
+                    asset.title.clone()
+                };
                 pb.set_message(msg);
             }
 

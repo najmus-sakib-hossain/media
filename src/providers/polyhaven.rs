@@ -1,7 +1,7 @@
 //! Poly Haven provider implementation.
 //!
 //! [Poly Haven API](https://polyhaven.com/api)
-//! 
+//!
 //! Provides access to 1,000+ 3D models, 2,000+ textures, and 700+ HDRIs - all CC0.
 
 use async_trait::async_trait;
@@ -13,9 +13,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Poly Haven provider for 3D assets, textures, and HDRIs.
 /// Access to 1K+ models, 2K+ textures, 700+ HDRIs - all CC0 licensed.
@@ -89,26 +87,29 @@ impl Provider for PolyHavenProvider {
         let asset_type = Self::asset_type_for_media(query.media_type);
         let url = format!("{}/assets?t={}", self.base_url(), asset_type);
 
-        let response = self
-            .client
-            .get(&url)
-            .await?;
+        let response = self.client.get(&url).await?;
 
         let assets_map: HashMap<String, PolyHavenAsset> = response.json_or_error().await?;
 
         let query_lower = query.query.to_lowercase();
         let start = (query.page - 1) * query.count;
-        
+
         let filtered_assets: Vec<MediaAsset> = assets_map
             .into_iter()
             .filter(|(id, asset)| {
                 if query.query.is_empty() || query.query == "*" {
                     return true;
                 }
-                id.to_lowercase().contains(&query_lower) ||
-                asset.name.to_lowercase().contains(&query_lower) ||
-                asset.tags.iter().any(|t| t.to_lowercase().contains(&query_lower)) ||
-                asset.categories.iter().any(|c| c.to_lowercase().contains(&query_lower))
+                id.to_lowercase().contains(&query_lower)
+                    || asset.name.to_lowercase().contains(&query_lower)
+                    || asset
+                        .tags
+                        .iter()
+                        .any(|t| t.to_lowercase().contains(&query_lower))
+                    || asset
+                        .categories
+                        .iter()
+                        .any(|c| c.to_lowercase().contains(&query_lower))
             })
             .skip(start)
             .take(query.count)
@@ -119,10 +120,13 @@ impl Provider for PolyHavenProvider {
                     2 => MediaType::Model3D,
                     _ => MediaType::Image,
                 };
-                
-                let preview_url = format!("https://cdn.polyhaven.com/asset_img/thumbs/{}.png?height=256", id);
+
+                let preview_url = format!(
+                    "https://cdn.polyhaven.com/asset_img/thumbs/{}.png?height=256",
+                    id
+                );
                 let download_url = format!("https://polyhaven.com/a/{}", id);
-                
+
                 MediaAsset::builder()
                     .id(id.clone())
                     .provider("polyhaven")

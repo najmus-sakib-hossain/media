@@ -26,29 +26,33 @@ impl ColorInfo {
     pub fn to_hex(&self) -> String {
         format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
     }
-    
+
     /// Convert to RGB string (e.g., "rgb(255, 87, 51)").
     pub fn to_rgb_string(&self) -> String {
         format!("rgb({}, {}, {})", self.r, self.g, self.b)
     }
-    
+
     /// Convert to HSL values.
     pub fn to_hsl(&self) -> (f32, f32, f32) {
         let r = self.r as f32 / 255.0;
         let g = self.g as f32 / 255.0;
         let b = self.b as f32 / 255.0;
-        
+
         let max = r.max(g).max(b);
         let min = r.min(g).min(b);
         let l = (max + min) / 2.0;
-        
+
         if (max - min).abs() < 0.001 {
             return (0.0, 0.0, l);
         }
-        
+
         let d = max - min;
-        let s = if l > 0.5 { d / (2.0 - max - min) } else { d / (max + min) };
-        
+        let s = if l > 0.5 {
+            d / (2.0 - max - min)
+        } else {
+            d / (max + min)
+        };
+
         let h = if (max - r).abs() < 0.001 {
             ((g - b) / d + if g < b { 6.0 } else { 0.0 }) / 6.0
         } else if (max - g).abs() < 0.001 {
@@ -56,20 +60,24 @@ impl ColorInfo {
         } else {
             ((r - g) / d + 4.0) / 6.0
         };
-        
+
         (h * 360.0, s * 100.0, l * 100.0)
     }
-    
+
     /// Get a descriptive color name (approximate).
     pub fn color_name(&self) -> &'static str {
         let (h, s, l) = self.to_hsl();
-        
-        if l < 10.0 { return "Black"; }
-        if l > 90.0 { return "White"; }
+
+        if l < 10.0 {
+            return "Black";
+        }
+        if l > 90.0 {
+            return "White";
+        }
         if s < 10.0 {
             return if l < 50.0 { "Dark Gray" } else { "Light Gray" };
         }
-        
+
         match h as u32 {
             0..=15 | 346..=360 => "Red",
             16..=45 => "Orange",
@@ -113,47 +121,47 @@ pub fn extract_palette<P: AsRef<Path>>(input: P, count: usize) -> Result<Vec<Str
 pub fn extract_palette_detailed<P: AsRef<Path>>(input: P, count: usize) -> Result<Vec<ColorInfo>> {
     let input_path = input.as_ref();
     let count = count.clamp(1, 16);
-    
+
     let img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     // Resize for faster processing if large
     let img = if img.width() > 200 || img.height() > 200 {
         img.thumbnail(200, 200)
     } else {
         img
     };
-    
+
     let rgba = img.to_rgba8();
     let total_pixels = (rgba.width() * rgba.height()) as f32;
-    
+
     // Quantize colors to reduce color space
     let mut color_counts: HashMap<(u8, u8, u8), u32> = HashMap::new();
-    
+
     for pixel in rgba.pixels() {
         // Skip transparent pixels
         if pixel[3] < 128 {
             continue;
         }
-        
+
         // Quantize to 5-bit color (32 levels per channel)
         let r = (pixel[0] / 8) * 8 + 4;
         let g = (pixel[1] / 8) * 8 + 4;
         let b = (pixel[2] / 8) * 8 + 4;
-        
+
         *color_counts.entry((r, g, b)).or_insert(0) += 1;
     }
-    
+
     // Sort by frequency
     let mut sorted_colors: Vec<_> = color_counts.into_iter().collect();
     sorted_colors.sort_by(|a, b| b.1.cmp(&a.1));
-    
+
     // Take top colors and filter similar colors
     let mut result = Vec::new();
-    
+
     for (color, freq) in sorted_colors {
         // Check if too similar to existing colors
         let is_unique = result.iter().all(|c: &ColorInfo| {
@@ -162,7 +170,7 @@ pub fn extract_palette_detailed<P: AsRef<Path>>(input: P, count: usize) -> Resul
             let db = (c.b as i32 - color.2 as i32).abs();
             dr + dg + db > 60 // Minimum color distance
         });
-        
+
         if is_unique {
             result.push(ColorInfo {
                 r: color.0,
@@ -171,12 +179,12 @@ pub fn extract_palette_detailed<P: AsRef<Path>>(input: P, count: usize) -> Resul
                 percentage: (freq as f32 / total_pixels) * 100.0,
             });
         }
-        
+
         if result.len() >= count {
             break;
         }
     }
-    
+
     Ok(result)
 }
 
@@ -189,21 +197,21 @@ pub fn generate_palette_swatch<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let colors = extract_palette_detailed(input_path, color_count)?;
-    
+
     if colors.is_empty() {
         return Err(DxError::Config {
             message: "No colors found in image".to_string(),
             source: None,
         });
     }
-    
+
     // Create swatch image
     let width = swatch_size * colors.len() as u32;
     let height = swatch_size;
     let mut img = image::RgbImage::new(width, height);
-    
+
     for (i, color) in colors.iter().enumerate() {
         let x_start = i as u32 * swatch_size;
         for y in 0..height {
@@ -212,15 +220,15 @@ pub fn generate_palette_swatch<P: AsRef<Path>>(
             }
         }
     }
-    
+
     img.save(output_path).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to save swatch: {}", e),
         source: None,
     })?;
-    
+
     let hex_colors: Vec<String> = colors.iter().map(|c| c.to_hex()).collect();
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Generated palette swatch with {} colors", colors.len()),
         output_path,
@@ -252,7 +260,7 @@ pub fn export_palette<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let output_path = output.as_ref();
     let colors = extract_palette_detailed(input, count)?;
-    
+
     let content = match format {
         PaletteFormat::Css => {
             let mut css = String::from(":root {\n");
@@ -263,20 +271,29 @@ pub fn export_palette<P: AsRef<Path>>(
             css
         }
         PaletteFormat::Json => {
-            let json_colors: Vec<_> = colors.iter().map(|c| {
-                serde_json::json!({
-                    "hex": c.to_hex(),
-                    "rgb": [c.r, c.g, c.b],
-                    "percentage": c.percentage,
-                    "name": c.color_name()
+            let json_colors: Vec<_> = colors
+                .iter()
+                .map(|c| {
+                    serde_json::json!({
+                        "hex": c.to_hex(),
+                        "rgb": [c.r, c.g, c.b],
+                        "percentage": c.percentage,
+                        "name": c.color_name()
+                    })
                 })
-            }).collect();
+                .collect();
             serde_json::to_string_pretty(&json_colors).unwrap_or_default()
         }
         PaletteFormat::Gpl => {
             let mut gpl = String::from("GIMP Palette\nName: Extracted Palette\nColumns: 0\n#\n");
             for c in &colors {
-                gpl.push_str(&format!("{:3} {:3} {:3}\t{}\n", c.r, c.g, c.b, c.color_name()));
+                gpl.push_str(&format!(
+                    "{:3} {:3} {:3}\t{}\n",
+                    c.r,
+                    c.g,
+                    c.b,
+                    c.color_name()
+                ));
             }
             gpl
         }
@@ -284,24 +301,30 @@ pub fn export_palette<P: AsRef<Path>>(
             // Simplified text representation (real ASE is binary)
             let mut ase = String::from("Adobe Swatch Exchange (Text)\n");
             for (i, c) in colors.iter().enumerate() {
-                ase.push_str(&format!("Color {}: {} ({}, {}, {})\n", i + 1, c.to_hex(), c.r, c.g, c.b));
+                ase.push_str(&format!(
+                    "Color {}: {} ({}, {}, {})\n",
+                    i + 1,
+                    c.to_hex(),
+                    c.r,
+                    c.g,
+                    c.b
+                ));
             }
             ase
         }
-        PaletteFormat::Text => {
-            colors.iter()
-                .map(|c| format!("{} - {} ({:.1}%)", c.to_hex(), c.color_name(), c.percentage))
-                .collect::<Vec<_>>()
-                .join("\n")
-        }
+        PaletteFormat::Text => colors
+            .iter()
+            .map(|c| format!("{} - {} ({:.1}%)", c.to_hex(), c.color_name(), c.percentage))
+            .collect::<Vec<_>>()
+            .join("\n"),
     };
-    
+
     std::fs::write(output_path, &content).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to write palette file: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Exported {} colors to {:?} format", colors.len(), format),
         output_path,
@@ -311,30 +334,30 @@ pub fn export_palette<P: AsRef<Path>>(
 /// Analyze image color statistics.
 pub fn analyze_colors<P: AsRef<Path>>(input: P) -> Result<ColorAnalysis> {
     let input_path = input.as_ref();
-    
+
     let img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     let rgba = img.to_rgba8();
     let total_pixels = (rgba.width() * rgba.height()) as f64;
-    
+
     let mut r_sum: u64 = 0;
     let mut g_sum: u64 = 0;
     let mut b_sum: u64 = 0;
     let mut brightness_sum: u64 = 0;
     let mut saturated_count = 0u64;
-    
+
     for pixel in rgba.pixels() {
         r_sum += pixel[0] as u64;
         g_sum += pixel[1] as u64;
         b_sum += pixel[2] as u64;
-        
+
         let brightness = (pixel[0] as u64 + pixel[1] as u64 + pixel[2] as u64) / 3;
         brightness_sum += brightness;
-        
+
         // Check if saturated (near pure color)
         let max = pixel[0].max(pixel[1]).max(pixel[2]);
         let min = pixel[0].min(pixel[1]).min(pixel[2]);
@@ -342,9 +365,9 @@ pub fn analyze_colors<P: AsRef<Path>>(input: P) -> Result<ColorAnalysis> {
             saturated_count += 1;
         }
     }
-    
+
     let pixel_count = total_pixels as u64;
-    
+
     Ok(ColorAnalysis {
         average_r: (r_sum / pixel_count) as u8,
         average_g: (g_sum / pixel_count) as u8,
@@ -375,9 +398,12 @@ pub struct ColorAnalysis {
 impl ColorAnalysis {
     /// Get average color as hex.
     pub fn average_hex(&self) -> String {
-        format!("#{:02X}{:02X}{:02X}", self.average_r, self.average_g, self.average_b)
+        format!(
+            "#{:02X}{:02X}{:02X}",
+            self.average_r, self.average_g, self.average_b
+        )
     }
-    
+
     /// Determine if image is predominantly dark or light.
     pub fn is_dark(&self) -> bool {
         self.average_brightness < 128
@@ -387,7 +413,7 @@ impl ColorAnalysis {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_color_info_hex() {
         let color = ColorInfo {
@@ -398,7 +424,7 @@ mod tests {
         };
         assert_eq!(color.to_hex(), "#FF5733");
     }
-    
+
     #[test]
     fn test_color_info_rgb_string() {
         let color = ColorInfo {
@@ -409,16 +435,31 @@ mod tests {
         };
         assert_eq!(color.to_rgb_string(), "rgb(255, 87, 51)");
     }
-    
+
     #[test]
     fn test_color_name() {
-        let red = ColorInfo { r: 255, g: 0, b: 0, percentage: 0.0 };
+        let red = ColorInfo {
+            r: 255,
+            g: 0,
+            b: 0,
+            percentage: 0.0,
+        };
         assert_eq!(red.color_name(), "Red");
-        
-        let green = ColorInfo { r: 0, g: 255, b: 0, percentage: 0.0 };
+
+        let green = ColorInfo {
+            r: 0,
+            g: 255,
+            b: 0,
+            percentage: 0.0,
+        };
         assert_eq!(green.color_name(), "Green");
-        
-        let blue = ColorInfo { r: 0, g: 0, b: 255, percentage: 0.0 };
+
+        let blue = ColorInfo {
+            r: 0,
+            g: 0,
+            b: 255,
+            percentage: 0.0,
+        };
         assert_eq!(blue.color_name(), "Blue");
     }
 }

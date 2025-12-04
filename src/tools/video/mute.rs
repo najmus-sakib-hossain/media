@@ -24,7 +24,7 @@ impl MuteOptions {
             quality: 18,
         }
     }
-    
+
     /// Create options with re-encoding.
     pub fn reencode(quality: u8) -> Self {
         Self {
@@ -58,7 +58,7 @@ pub fn mute_video_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -66,26 +66,26 @@ pub fn mute_video_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffmpeg");
-    cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-an"); // No audio
-    
+    cmd.arg("-y").arg("-i").arg(input_path).arg("-an"); // No audio
+
     if options.copy_video {
         cmd.arg("-c:v").arg("copy");
     } else {
-        cmd.arg("-c:v").arg("libx264")
-            .arg("-crf").arg(options.quality.to_string());
+        cmd.arg("-c:v")
+            .arg("libx264")
+            .arg("-crf")
+            .arg(options.quality.to_string());
     }
-    
+
     cmd.arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -95,11 +95,9 @@ pub fn mute_video_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
         format!("Removed audio track ({} bytes)", output_size),
         output_path,
@@ -112,15 +110,11 @@ pub fn mute_video_with_options<P: AsRef<Path>>(
 /// * `video` - Path to input video
 /// * `audio` - Path to new audio file
 /// * `output` - Path for output video
-pub fn replace_audio<P: AsRef<Path>>(
-    video: P,
-    audio: P,
-    output: P,
-) -> Result<ToolOutput> {
+pub fn replace_audio<P: AsRef<Path>>(video: P, audio: P, output: P) -> Result<ToolOutput> {
     let video_path = video.as_ref();
     let audio_path = audio.as_ref();
     let output_path = output.as_ref();
-    
+
     if !video_path.exists() {
         return Err(DxError::FileIo {
             path: video_path.to_path_buf(),
@@ -128,7 +122,7 @@ pub fn replace_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     if !audio_path.exists() {
         return Err(DxError::FileIo {
             path: audio_path.to_path_buf(),
@@ -136,23 +130,29 @@ pub fn replace_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(video_path)
-        .arg("-i").arg(audio_path)
-        .arg("-map").arg("0:v:0")  // First video stream from first input
-        .arg("-map").arg("1:a:0")  // First audio stream from second input
-        .arg("-c:v").arg("copy")
-        .arg("-c:a").arg("aac")
-        .arg("-shortest")  // Cut to shortest stream
+        .arg("-i")
+        .arg(video_path)
+        .arg("-i")
+        .arg(audio_path)
+        .arg("-map")
+        .arg("0:v:0") // First video stream from first input
+        .arg("-map")
+        .arg("1:a:0") // First audio stream from second input
+        .arg("-c:v")
+        .arg("copy")
+        .arg("-c:a")
+        .arg("aac")
+        .arg("-shortest") // Cut to shortest stream
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -162,7 +162,7 @@ pub fn replace_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Replaced audio track",
         output_path,
@@ -170,39 +170,41 @@ pub fn replace_audio<P: AsRef<Path>>(
 }
 
 /// Add audio track to video (mix with existing).
-pub fn add_audio<P: AsRef<Path>>(
-    video: P,
-    audio: P,
-    output: P,
-    volume: f32,
-) -> Result<ToolOutput> {
+pub fn add_audio<P: AsRef<Path>>(video: P, audio: P, output: P, volume: f32) -> Result<ToolOutput> {
     let video_path = video.as_ref();
     let audio_path = audio.as_ref();
     let output_path = output.as_ref();
-    
+
     let volume = volume.clamp(0.0, 2.0);
-    
+
     let filter = format!(
         "[0:a][1:a]amix=inputs=2:duration=first:weights=1 {}[aout]",
         volume
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(video_path)
-        .arg("-i").arg(audio_path)
-        .arg("-filter_complex").arg(&filter)
-        .arg("-map").arg("0:v:0")
-        .arg("-map").arg("[aout]")
-        .arg("-c:v").arg("copy")
-        .arg("-c:a").arg("aac")
+        .arg("-i")
+        .arg(video_path)
+        .arg("-i")
+        .arg(audio_path)
+        .arg("-filter_complex")
+        .arg(&filter)
+        .arg("-map")
+        .arg("0:v:0")
+        .arg("-map")
+        .arg("[aout]")
+        .arg("-c:v")
+        .arg("copy")
+        .arg("-c:a")
+        .arg("aac")
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -212,7 +214,7 @@ pub fn add_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Added audio track",
         output_path,
@@ -220,29 +222,29 @@ pub fn add_audio<P: AsRef<Path>>(
 }
 
 /// Adjust audio volume in video.
-pub fn adjust_volume<P: AsRef<Path>>(
-    input: P,
-    output: P,
-    volume: f32,
-) -> Result<ToolOutput> {
+pub fn adjust_volume<P: AsRef<Path>>(input: P, output: P, volume: f32) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let volume_filter = format!("volume={}", volume);
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-c:v").arg("copy")
-        .arg("-af").arg(&volume_filter)
-        .arg("-c:a").arg("aac")
+        .arg("-i")
+        .arg(input_path)
+        .arg("-c:v")
+        .arg("copy")
+        .arg("-af")
+        .arg(&volume_filter)
+        .arg("-c:a")
+        .arg("aac")
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -252,7 +254,7 @@ pub fn adjust_volume<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Adjusted volume to {}x", volume),
         output_path,
@@ -267,9 +269,9 @@ pub fn batch_mute<P: AsRef<Path>>(inputs: &[P], output_dir: P) -> Result<ToolOut
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut muted = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
@@ -281,25 +283,24 @@ pub fn batch_mute<P: AsRef<Path>>(inputs: &[P], output_dir: P) -> Result<ToolOut
             .and_then(|s| s.to_str())
             .unwrap_or("mp4");
         let output_path = output_dir.join(format!("{}_silent.{}", file_stem, extension));
-        
+
         if mute_video(input_path, &output_path).is_ok() {
             muted.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Muted {} videos", muted.len()))
-        .with_paths(muted))
+
+    Ok(ToolOutput::success(format!("Muted {} videos", muted.len())).with_paths(muted))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_mute_options() {
         let fast = MuteOptions::fast();
         assert!(fast.copy_video);
-        
+
         let reencode = MuteOptions::reencode(23);
         assert!(!reencode.copy_video);
         assert_eq!(reencode.quality, 23);

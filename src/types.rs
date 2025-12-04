@@ -222,7 +222,7 @@ impl MediaAsset {
         } else {
             &title
         };
-        
+
         let ext = self
             .download_url
             .split('.')
@@ -230,9 +230,15 @@ impl MediaAsset {
             .and_then(|e| e.split('?').next())
             .unwrap_or("bin");
 
-        format!("{}_{}_{}.{}", title, self.provider, &self.id[..8.min(self.id.len())], ext)
-            .replace(' ', "_")
-            .to_lowercase()
+        format!(
+            "{}_{}_{}.{}",
+            title,
+            self.provider,
+            &self.id[..8.min(self.id.len())],
+            ext
+        )
+        .replace(' ', "_")
+        .to_lowercase()
     }
 }
 

@@ -42,7 +42,7 @@ impl Resolution {
             Self::Custom(w, h) => (*w, *h),
         }
     }
-    
+
     /// Get resolution name.
     pub fn name(&self) -> String {
         match self {
@@ -56,7 +56,7 @@ impl Resolution {
             Self::Custom(w, h) => format!("{}x{}", w, h),
         }
     }
-    
+
     /// Parse from string (e.g., "1080p", "720", "1920x1080").
     pub fn from_str(s: &str) -> Option<Self> {
         let s = s.to_lowercase().trim().to_string();
@@ -153,7 +153,7 @@ impl ScaleOptions {
             ..Default::default()
         }
     }
-    
+
     /// Create options with custom dimensions.
     pub fn custom(width: u32, height: u32) -> Self {
         Self {
@@ -162,19 +162,19 @@ impl ScaleOptions {
             ..Default::default()
         }
     }
-    
+
     /// Set scaling algorithm.
     pub fn with_algorithm(mut self, algo: ScaleAlgorithm) -> Self {
         self.algorithm = algo;
         self
     }
-    
+
     /// Set quality (CRF 0-51, lower = better).
     pub fn with_quality(mut self, crf: u8) -> Self {
         self.quality = crf.clamp(0, 51);
         self
     }
-    
+
     /// Force exact dimensions (may stretch).
     pub fn force_dimensions(mut self) -> Self {
         self.keep_aspect = false;
@@ -214,7 +214,7 @@ pub fn scale_video_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -222,7 +222,7 @@ pub fn scale_video_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     // Build scale filter
     let scale_filter = if options.keep_aspect {
         // Scale while maintaining aspect ratio, padding if necessary
@@ -233,31 +233,38 @@ pub fn scale_video_with_options<P: AsRef<Path>>(
     } else {
         format!(
             "scale={}:{}:flags={}",
-            options.width, options.height, options.algorithm.ffmpeg_flag()
+            options.width,
+            options.height,
+            options.algorithm.ffmpeg_flag()
         )
     };
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-vf").arg(&scale_filter)
-        .arg("-c:v").arg("libx264")
-        .arg("-crf").arg(options.quality.to_string())
-        .arg("-preset").arg("medium");
-    
+        .arg("-i")
+        .arg(input_path)
+        .arg("-vf")
+        .arg(&scale_filter)
+        .arg("-c:v")
+        .arg("libx264")
+        .arg("-crf")
+        .arg(options.quality.to_string())
+        .arg("-preset")
+        .arg("medium");
+
     if let Some(audio_br) = &options.audio_bitrate {
         cmd.arg("-c:a").arg("aac").arg("-b:a").arg(audio_br);
     } else {
         cmd.arg("-c:a").arg("copy");
     }
-    
+
     cmd.arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -267,11 +274,9 @@ pub fn scale_video_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
         format!(
             "Scaled to {}x{} ({} bytes)",
@@ -317,9 +322,9 @@ pub fn batch_scale<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut scaled = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
@@ -330,36 +335,40 @@ pub fn batch_scale<P: AsRef<Path>>(
             .extension()
             .and_then(|s| s.to_str())
             .unwrap_or("mp4");
-        
+
         let (w, h) = resolution.dimensions();
         let output_path = output_dir.join(format!("{}_{}x{}.{}", file_stem, w, h, extension));
-        
+
         if scale_to_resolution(input_path, &output_path, resolution).is_ok() {
             scaled.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Scaled {} videos to {}", scaled.len(), resolution.name()))
-        .with_paths(scaled))
+
+    Ok(ToolOutput::success(format!(
+        "Scaled {} videos to {}",
+        scaled.len(),
+        resolution.name()
+    ))
+    .with_paths(scaled))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_resolution() {
         assert_eq!(Resolution::R1080p.dimensions(), (1920, 1080));
         assert_eq!(Resolution::R4k.dimensions(), (3840, 2160));
     }
-    
+
     #[test]
     fn test_resolution_parse() {
         assert_eq!(Resolution::from_str("1080p"), Some(Resolution::R1080p));
         assert_eq!(Resolution::from_str("720"), Some(Resolution::R720p));
         assert_eq!(Resolution::from_str("4k"), Some(Resolution::R4k));
     }
-    
+
     #[test]
     fn test_custom_resolution() {
         if let Some(Resolution::Custom(w, h)) = Resolution::from_str("1600x900") {

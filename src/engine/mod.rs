@@ -12,5 +12,5 @@ mod search;
 pub use download::Downloader;
 pub use dx::DxMedia;
 pub use filemanager::FileManager;
-pub use scraper::{Scraper, ScrapeOptions, ScrapeResult};
+pub use scraper::{ScrapeOptions, ScrapeResult, Scraper};
 pub use search::SearchEngine;

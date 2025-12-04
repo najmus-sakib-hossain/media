@@ -83,50 +83,45 @@ pub fn create_7z_with_options<P: AsRef<Path>>(
     options: SevenZipOptions,
 ) -> Result<ToolOutput> {
     let output_path = output.as_ref();
-    
+
     let mut cmd = Command::new("7z");
     cmd.arg("a")
         .arg("-t7z")
         .arg(format!("-mx={}", options.level.level()));
-    
+
     if options.solid {
         cmd.arg("-ms=on");
     } else {
         cmd.arg("-ms=off");
     }
-    
+
     if let Some(ref password) = options.password {
         cmd.arg(format!("-p{}", password));
         if options.encrypt_names {
             cmd.arg("-mhe=on");
         }
     }
-    
+
     cmd.arg(output_path);
-    
+
     for input in inputs {
         cmd.arg(input.as_ref());
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
-            message: format!(
-                "7z failed: {}",
-                String::from_utf8_lossy(&result.stderr)
-            ),
+            message: format!("7z failed: {}", String::from_utf8_lossy(&result.stderr)),
             source: None,
         });
     }
-    
-    let size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
         format!("Created 7z archive ({} bytes)", size),
         output_path,
@@ -157,7 +152,7 @@ pub fn extract_7z_with_password<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -165,29 +160,29 @@ pub fn extract_7z_with_password<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create directory: {}", e),
         source: None,
     })?;
-    
+
     let mut cmd = Command::new("7z");
     cmd.arg("x")
         .arg("-y")
         .arg(format!("-o{}", output_dir.to_string_lossy()));
-    
+
     if let Some(pwd) = password {
         cmd.arg(format!("-p{}", pwd));
     }
-    
+
     cmd.arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -197,7 +192,7 @@ pub fn extract_7z_with_password<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Extracted 7z archive",
         output_dir,
@@ -210,9 +205,12 @@ pub fn test_7z<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
 }
 
 /// Test 7z with password.
-pub fn test_7z_with_password<P: AsRef<Path>>(input: P, password: Option<&str>) -> Result<ToolOutput> {
+pub fn test_7z_with_password<P: AsRef<Path>>(
+    input: P,
+    password: Option<&str>,
+) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -220,24 +218,23 @@ pub fn test_7z_with_password<P: AsRef<Path>>(input: P, password: Option<&str>) -
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("7z");
     cmd.arg("t");
-    
+
     if let Some(pwd) = password {
         cmd.arg(format!("-p{}", pwd));
     }
-    
+
     cmd.arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if result.status.success() {
-        Ok(ToolOutput::success("Archive integrity OK")
-            .with_metadata("valid", "true".to_string()))
+        Ok(ToolOutput::success("Archive integrity OK").with_metadata("valid", "true".to_string()))
     } else {
         Ok(ToolOutput::success("Archive integrity FAILED")
             .with_metadata("valid", "false".to_string()))
@@ -250,9 +247,12 @@ pub fn list_7z<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
 }
 
 /// List 7z with password.
-pub fn list_7z_with_password<P: AsRef<Path>>(input: P, password: Option<&str>) -> Result<ToolOutput> {
+pub fn list_7z_with_password<P: AsRef<Path>>(
+    input: P,
+    password: Option<&str>,
+) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -260,38 +260,37 @@ pub fn list_7z_with_password<P: AsRef<Path>>(input: P, password: Option<&str>) -
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("7z");
     cmd.arg("l");
-    
+
     if let Some(pwd) = password {
         cmd.arg(format!("-p{}", pwd));
     }
-    
+
     cmd.arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "Failed to list archive".to_string(),
             source: None,
         });
     }
-    
+
     let output = String::from_utf8_lossy(&result.stdout);
-    
-    Ok(ToolOutput::success(output.to_string())
-        .with_metadata("format", "7z".to_string()))
+
+    Ok(ToolOutput::success(output.to_string()).with_metadata("format", "7z".to_string()))
 }
 
 /// Update 7z archive.
 pub fn update_7z<P: AsRef<Path>>(archive: P, files: &[P]) -> Result<ToolOutput> {
     let archive_path = archive.as_ref();
-    
+
     if !archive_path.exists() {
         return Err(DxError::FileIo {
             path: archive_path.to_path_buf(),
@@ -299,26 +298,26 @@ pub fn update_7z<P: AsRef<Path>>(archive: P, files: &[P]) -> Result<ToolOutput> 
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("7z");
     cmd.arg("u").arg(archive_path);
-    
+
     for file in files {
         cmd.arg(file.as_ref());
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "Failed to update archive".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Updated archive with {} files", files.len()),
         archive_path,
@@ -328,7 +327,7 @@ pub fn update_7z<P: AsRef<Path>>(archive: P, files: &[P]) -> Result<ToolOutput> 
 /// Delete files from 7z archive.
 pub fn delete_from_7z<P: AsRef<Path>>(archive: P, files: &[&str]) -> Result<ToolOutput> {
     let archive_path = archive.as_ref();
-    
+
     if !archive_path.exists() {
         return Err(DxError::FileIo {
             path: archive_path.to_path_buf(),
@@ -336,26 +335,26 @@ pub fn delete_from_7z<P: AsRef<Path>>(archive: P, files: &[&str]) -> Result<Tool
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("7z");
     cmd.arg("d").arg(archive_path);
-    
+
     for file in files {
         cmd.arg(file);
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run 7z: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "Failed to delete from archive".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Deleted {} files from archive", files.len()),
         archive_path,
@@ -365,7 +364,7 @@ pub fn delete_from_7z<P: AsRef<Path>>(archive: P, files: &[&str]) -> Result<Tool
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_compression_level() {
         assert_eq!(SevenZipLevel::Store.level(), 0);

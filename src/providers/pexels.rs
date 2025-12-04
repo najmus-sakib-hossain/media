@@ -10,9 +10,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Pexels provider for stock photos and videos.
 #[derive(Debug)]
@@ -86,7 +84,7 @@ impl Provider for PexelsProvider {
         }
 
         let url = format!("{}/search", self.base_url());
-        
+
         let params = [
             ("query", query.query.as_str()),
             ("page", &query.page.to_string()),
@@ -95,10 +93,7 @@ impl Provider for PexelsProvider {
 
         let headers = [("Authorization", api_key.as_str())];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &headers)
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &headers).await?;
 
         let api_response: PexelsSearchResponse = response.json_or_error().await?;
 
@@ -147,7 +142,7 @@ impl PexelsProvider {
     /// Search for videos using Pexels video API endpoint.
     async fn search_videos(&self, api_key: &str, query: &SearchQuery) -> Result<SearchResult> {
         let url = "https://api.pexels.com/videos/search";
-        
+
         let params = [
             ("query", query.query.as_str()),
             ("page", &query.page.to_string()),
@@ -156,10 +151,7 @@ impl PexelsProvider {
 
         let headers = [("Authorization", api_key)];
 
-        let response = self
-            .client
-            .get_with_query(url, &params, &headers)
-            .await?;
+        let response = self.client.get_with_query(url, &params, &headers).await?;
 
         let api_response: PexelsVideoSearchResponse = response.json_or_error().await?;
 
@@ -168,22 +160,26 @@ impl PexelsProvider {
             .into_iter()
             .map(|video| {
                 // Get the best quality video file available (prefer HD)
-                let best_file = video.video_files.iter()
+                let best_file = video
+                    .video_files
+                    .iter()
                     .filter(|f| f.quality == "hd" || f.quality == "sd")
                     .max_by_key(|f| f.width.unwrap_or(0))
                     .or_else(|| video.video_files.first());
 
-                let download_url = best_file
-                    .map(|f| f.link.clone())
-                    .unwrap_or_default();
+                let download_url = best_file.map(|f| f.link.clone()).unwrap_or_default();
 
                 let (width, height) = best_file
-                    .map(|f| (f.width.unwrap_or(video.width), f.height.unwrap_or(video.height)))
+                    .map(|f| {
+                        (
+                            f.width.unwrap_or(video.width),
+                            f.height.unwrap_or(video.height),
+                        )
+                    })
                     .unwrap_or((video.width, video.height));
 
                 // Use video picture as preview
-                let preview_url = video.video_pictures.first()
-                    .map(|p| p.picture.clone());
+                let preview_url = video.video_pictures.first().map(|p| p.picture.clone());
 
                 MediaAsset::builder()
                     .id(video.id.to_string())
@@ -332,7 +328,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = PexelsProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "pexels");
         assert_eq!(provider.display_name(), "Pexels");
         assert!(provider.requires_api_key());

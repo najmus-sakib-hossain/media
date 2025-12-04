@@ -74,7 +74,7 @@ impl ResizeOptions {
             scale_percent: None,
         }
     }
-    
+
     /// Create options for fit resize (preserve aspect ratio).
     pub fn fit(max_width: u32, max_height: u32) -> Self {
         Self {
@@ -85,7 +85,7 @@ impl ResizeOptions {
             scale_percent: None,
         }
     }
-    
+
     /// Create options for fill resize (crop to fit).
     pub fn fill(width: u32, height: u32) -> Self {
         Self {
@@ -96,7 +96,7 @@ impl ResizeOptions {
             scale_percent: None,
         }
     }
-    
+
     /// Create options for scale by percentage.
     pub fn scale(percent: f32) -> Self {
         Self {
@@ -107,7 +107,7 @@ impl ResizeOptions {
             scale_percent: Some(percent),
         }
     }
-    
+
     /// Set the filter algorithm.
     pub fn with_filter(mut self, filter: ResizeFilter) -> Self {
         self.filter = filter;
@@ -144,28 +144,38 @@ impl Default for ResizeOptions {
 /// // Scale to 50%
 /// resize_image("input.jpg", "small.jpg", ResizeOptions::scale(50.0)).unwrap();
 /// ```
-pub fn resize_image<P: AsRef<Path>>(input: P, output: P, options: ResizeOptions) -> Result<ToolOutput> {
+pub fn resize_image<P: AsRef<Path>>(
+    input: P,
+    output: P,
+    options: ResizeOptions,
+) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     let (orig_width, orig_height) = (img.width(), img.height());
-    
+
     let resized = match options.mode {
-        ResizeMode::Exact => {
-            img.resize_exact(options.width, options.height, options.filter.to_filter_type())
-        }
-        ResizeMode::Fit => {
-            img.resize(options.width, options.height, options.filter.to_filter_type())
-        }
-        ResizeMode::Fill => {
-            img.resize_to_fill(options.width, options.height, options.filter.to_filter_type())
-        }
+        ResizeMode::Exact => img.resize_exact(
+            options.width,
+            options.height,
+            options.filter.to_filter_type(),
+        ),
+        ResizeMode::Fit => img.resize(
+            options.width,
+            options.height,
+            options.filter.to_filter_type(),
+        ),
+        ResizeMode::Fill => img.resize_to_fill(
+            options.width,
+            options.height,
+            options.filter.to_filter_type(),
+        ),
         ResizeMode::Scale => {
             let scale = options.scale_percent.unwrap_or(100.0) / 100.0;
             let new_width = (orig_width as f32 * scale) as u32;
@@ -173,15 +183,15 @@ pub fn resize_image<P: AsRef<Path>>(input: P, output: P, options: ResizeOptions)
             img.resize_exact(new_width, new_height, options.filter.to_filter_type())
         }
     };
-    
+
     resized.save(output_path).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to save resized image: {}", e),
         source: None,
     })?;
-    
+
     let (new_width, new_height) = (resized.width(), resized.height());
-    
+
     Ok(ToolOutput::success_with_path(
         format!(
             "Resized {}x{} -> {}x{}",
@@ -204,23 +214,27 @@ pub fn resize_image<P: AsRef<Path>>(input: P, output: P, options: ResizeOptions)
 pub fn create_thumbnail<P: AsRef<Path>>(input: P, output: P, size: u32) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     let thumbnail = img.thumbnail(size, size);
-    
+
     thumbnail.save(output_path).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to save thumbnail: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
-        format!("Created {}x{} thumbnail", thumbnail.width(), thumbnail.height()),
+        format!(
+            "Created {}x{} thumbnail",
+            thumbnail.width(),
+            thumbnail.height()
+        ),
         output_path,
     ))
 }
@@ -237,9 +251,9 @@ pub fn batch_resize<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut resized = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_name = input_path
@@ -247,20 +261,19 @@ pub fn batch_resize<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("output.jpg");
         let output_path = output_dir.join(file_name);
-        
+
         if resize_image(input_path, &output_path, options.clone()).is_ok() {
             resized.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Resized {} images", resized.len()))
-        .with_paths(resized))
+
+    Ok(ToolOutput::success(format!("Resized {} images", resized.len())).with_paths(resized))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_resize_options() {
         let opts = ResizeOptions::fit(800, 600);
@@ -268,7 +281,7 @@ mod tests {
         assert_eq!(opts.height, 600);
         assert_eq!(opts.mode, ResizeMode::Fit);
     }
-    
+
     #[test]
     fn test_scale_options() {
         let opts = ResizeOptions::scale(50.0);

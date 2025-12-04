@@ -1,7 +1,7 @@
 //! Freesound provider implementation.
 //!
 //! [Freesound API Documentation](https://freesound.org/docs/api/)
-//! 
+//!
 //! Provides access to 600,000+ sound effects and audio samples.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Freesound provider for sound effects and audio samples.
 /// Access to 600K+ Creative Commons licensed sounds.
@@ -94,22 +92,22 @@ impl Provider for FreesoundProvider {
         };
 
         let url = format!("{}/search/text/", self.base_url());
-        
+
         let page_str = query.page.to_string();
         let page_size_str = query.count.min(150).to_string();
-        
+
         let params = [
             ("query", query.query.as_str()),
             ("page", &page_str),
             ("page_size", &page_size_str),
-            ("fields", "id,name,description,tags,license,username,previews,download,duration,filesize"),
+            (
+                "fields",
+                "id,name,description,tags,license,username,previews,download,duration,filesize",
+            ),
             ("token", api_key.as_str()),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: FreesoundSearchResponse = response.json_or_error().await?;
 
@@ -118,9 +116,10 @@ impl Provider for FreesoundProvider {
             .into_iter()
             .map(|sound| {
                 let license = Self::parse_license(&sound.license);
-                
+
                 // Get preview URL (prefer HQ MP3)
-                let preview_url = sound.previews
+                let preview_url = sound
+                    .previews
                     .as_ref()
                     .and_then(|p| p.preview_hq_mp3.clone().or(p.preview_lq_mp3.clone()))
                     .unwrap_or_default();
@@ -220,7 +219,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = FreesoundProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "freesound");
         assert_eq!(provider.display_name(), "Freesound");
         assert!(provider.requires_api_key());
@@ -228,15 +227,21 @@ mod tests {
 
     #[test]
     fn test_license_parsing() {
-        assert!(matches!(FreesoundProvider::parse_license("Creative Commons 0"), License::Cc0));
-        assert!(matches!(FreesoundProvider::parse_license("Attribution"), License::CcBy));
+        assert!(matches!(
+            FreesoundProvider::parse_license("Creative Commons 0"),
+            License::Cc0
+        ));
+        assert!(matches!(
+            FreesoundProvider::parse_license("Attribution"),
+            License::CcBy
+        ));
     }
 
     #[test]
     fn test_supported_media_types() {
         let config = Config::default_for_testing();
         let provider = FreesoundProvider::new(&config);
-        
+
         let types = provider.supported_media_types();
         assert!(types.contains(&MediaType::Audio));
         assert!(!types.contains(&MediaType::Image));

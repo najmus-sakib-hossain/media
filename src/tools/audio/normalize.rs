@@ -54,7 +54,7 @@ impl NormalizeOptions {
             ..Default::default()
         }
     }
-    
+
     /// Broadcast-standard loudness normalization (-23 LUFS).
     pub fn broadcast() -> Self {
         Self {
@@ -64,7 +64,7 @@ impl NormalizeOptions {
             true_peak: -1.0,
         }
     }
-    
+
     /// Streaming-optimized loudness (-14 LUFS).
     pub fn streaming() -> Self {
         Self {
@@ -100,7 +100,7 @@ pub fn normalize_audio<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -108,7 +108,7 @@ pub fn normalize_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let filter = match options.method {
         NormalizeMethod::Peak => {
             // Two-pass peak normalization
@@ -116,38 +116,46 @@ pub fn normalize_audio<P: AsRef<Path>>(
             format!("volume={}:precision=double", level)
         }
         NormalizeMethod::Rms => {
-            format!("loudnorm=I={}:TP={}:LRA=11", options.target_level, options.true_peak)
+            format!(
+                "loudnorm=I={}:TP={}:LRA=11",
+                options.target_level, options.true_peak
+            )
         }
         NormalizeMethod::Loudness => {
             // EBU R128 loudness normalization
             format!(
                 "loudnorm=I={}:TP={}:LRA=11:measured_I=-23:measured_LRA=7:measured_TP=-2:measured_thresh=-33:offset=0:linear=true:print_format=summary",
-                options.target_level,
-                options.true_peak
+                options.target_level, options.true_peak
             )
         }
         NormalizeMethod::DynamicRange => {
             "compand=attacks=0:decays=0.5:points=-80/-80|-45/-45|-27/-25|0/-10:gain=5".to_string()
         }
     };
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter);
-    
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter);
+
     if options.limiter && matches!(options.method, NormalizeMethod::Peak) {
         // Add limiter for peak normalization
-        cmd.arg("-af").arg(format!("{},alimiter=limit={}", filter, 10f32.powf(options.true_peak / 20.0)));
+        cmd.arg("-af").arg(format!(
+            "{},alimiter=limit={}",
+            filter,
+            10f32.powf(options.true_peak / 20.0)
+        ));
     }
-    
+
     cmd.arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -157,14 +165,14 @@ pub fn normalize_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let method_name = match options.method {
         NormalizeMethod::Peak => "peak",
         NormalizeMethod::Rms => "RMS",
         NormalizeMethod::Loudness => "loudness (EBU R128)",
         NormalizeMethod::DynamicRange => "dynamic range",
     };
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Applied {} normalization", method_name),
         output_path,
@@ -174,7 +182,7 @@ pub fn normalize_audio<P: AsRef<Path>>(
 /// Analyze audio levels (first pass for normalization).
 pub fn analyze_levels<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -182,33 +190,42 @@ pub fn analyze_levels<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
             source: None,
         });
     }
-    
+
     // Use volumedetect filter
     let mut cmd = Command::new("ffmpeg");
-    cmd.arg("-i").arg(input_path)
-        .arg("-af").arg("volumedetect")
-        .arg("-f").arg("null")
+    cmd.arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg("volumedetect")
+        .arg("-f")
+        .arg("null")
         .arg("-");
-    
+
     let output = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    
+
     // Parse volume stats from stderr
     let mut result = ToolOutput::success("Audio level analysis complete");
-    
+
     for line in stderr.lines() {
         if line.contains("mean_volume:") || line.contains("max_volume:") {
             if let Some(value) = line.split(':').last() {
-                let key = if line.contains("mean") { "mean_volume" } else { "max_volume" };
-                result.metadata.insert(key.to_string(), value.trim().to_string());
+                let key = if line.contains("mean") {
+                    "mean_volume"
+                } else {
+                    "max_volume"
+                };
+                result
+                    .metadata
+                    .insert(key.to_string(), value.trim().to_string());
             }
         }
     }
-    
+
     Ok(result)
 }
 
@@ -216,20 +233,22 @@ pub fn analyze_levels<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
 pub fn adjust_volume<P: AsRef<Path>>(input: P, output: P, db: f32) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let filter = format!("volume={}dB", db);
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -239,7 +258,7 @@ pub fn adjust_volume<P: AsRef<Path>>(input: P, output: P, db: f32) -> Result<Too
             source: None,
         });
     }
-    
+
     let direction = if db >= 0.0 { "increased" } else { "decreased" };
     Ok(ToolOutput::success_with_path(
         format!("Volume {} by {}dB", direction, db.abs()),
@@ -259,9 +278,9 @@ pub fn batch_normalize<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut normalized = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_name = input_path
@@ -269,25 +288,27 @@ pub fn batch_normalize<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("audio.mp3");
         let output_path = output_dir.join(format!("norm_{}", file_name));
-        
+
         if normalize_audio(input_path, &output_path, options.clone()).is_ok() {
             normalized.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Normalized {} files", normalized.len()))
-        .with_paths(normalized))
+
+    Ok(
+        ToolOutput::success(format!("Normalized {} files", normalized.len()))
+            .with_paths(normalized),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_normalize_options() {
         let peak = NormalizeOptions::peak();
         assert_eq!(peak.target_level, -1.0);
-        
+
         let broadcast = NormalizeOptions::broadcast();
         assert_eq!(broadcast.target_level, -23.0);
     }

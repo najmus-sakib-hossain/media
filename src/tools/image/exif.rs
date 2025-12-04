@@ -4,8 +4,8 @@
 
 use crate::error::{DxError, Result};
 use crate::tools::ToolOutput;
-use std::path::Path;
 use std::io::{Read, Write};
+use std::path::Path;
 
 /// EXIF metadata information.
 #[derive(Debug, Clone, Default)]
@@ -47,7 +47,7 @@ impl ExifInfo {
     pub fn has_gps(&self) -> bool {
         self.gps_latitude.is_some() || self.gps_longitude.is_some()
     }
-    
+
     /// Check if the image has any metadata.
     pub fn is_empty(&self) -> bool {
         self.make.is_none()
@@ -74,20 +74,20 @@ impl ExifInfo {
 /// ```
 pub fn read_exif<P: AsRef<Path>>(input: P) -> Result<ExifInfo> {
     let input_path = input.as_ref();
-    
+
     let file = std::fs::File::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open file: {}", e),
         source: None,
     })?;
-    
+
     let mut bufreader = std::io::BufReader::new(&file);
     let exifreader = exif::Reader::new();
-    
+
     match exifreader.read_from_container(&mut bufreader) {
         Ok(exif_data) => {
             let mut info = ExifInfo::default();
-            
+
             // Extract common fields
             if let Some(field) = exif_data.get_field(exif::Tag::Make, exif::In::PRIMARY) {
                 info.make = Some(field.display_value().to_string());
@@ -107,7 +107,7 @@ pub fn read_exif<P: AsRef<Path>>(input: P) -> Result<ExifInfo> {
             if let Some(field) = exif_data.get_field(exif::Tag::Artist, exif::In::PRIMARY) {
                 info.artist = Some(field.display_value().to_string());
             }
-            
+
             // GPS coordinates
             if let Some(field) = exif_data.get_field(exif::Tag::GPSLatitude, exif::In::PRIMARY) {
                 info.gps_latitude = parse_gps_coordinate(&field.display_value().to_string());
@@ -115,7 +115,7 @@ pub fn read_exif<P: AsRef<Path>>(input: P) -> Result<ExifInfo> {
             if let Some(field) = exif_data.get_field(exif::Tag::GPSLongitude, exif::In::PRIMARY) {
                 info.gps_longitude = parse_gps_coordinate(&field.display_value().to_string());
             }
-            
+
             // Camera settings
             if let Some(field) = exif_data.get_field(exif::Tag::ISOSpeed, exif::In::PRIMARY) {
                 info.iso = field.display_value().to_string().parse().ok();
@@ -129,15 +129,17 @@ pub fn read_exif<P: AsRef<Path>>(input: P) -> Result<ExifInfo> {
             if let Some(field) = exif_data.get_field(exif::Tag::FocalLength, exif::In::PRIMARY) {
                 info.focal_length = parse_rational(&field.display_value().to_string());
             }
-            
+
             // Image dimensions
-            if let Some(field) = exif_data.get_field(exif::Tag::PixelXDimension, exif::In::PRIMARY) {
+            if let Some(field) = exif_data.get_field(exif::Tag::PixelXDimension, exif::In::PRIMARY)
+            {
                 info.width = field.display_value().to_string().parse().ok();
             }
-            if let Some(field) = exif_data.get_field(exif::Tag::PixelYDimension, exif::In::PRIMARY) {
+            if let Some(field) = exif_data.get_field(exif::Tag::PixelYDimension, exif::In::PRIMARY)
+            {
                 info.height = field.display_value().to_string().parse().ok();
             }
-            
+
             Ok(info)
         }
         Err(_) => {
@@ -194,11 +196,11 @@ fn parse_rational(s: &str) -> Option<f64> {
 pub fn wipe_exif<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     // Read original EXIF info for reporting
     let original_info = read_exif(input_path).unwrap_or_default();
     let had_gps = original_info.has_gps();
-    
+
     // Open image and re-save without metadata
     // The image crate strips EXIF when re-encoding
     let img = image::open(input_path).map_err(|e| DxError::FileIo {
@@ -206,14 +208,14 @@ pub fn wipe_exif<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     // Determine output format from extension
     let extension = output_path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("jpg")
         .to_lowercase();
-    
+
     // Save without metadata
     match extension.as_str() {
         "jpg" | "jpeg" => {
@@ -225,11 +227,12 @@ pub fn wipe_exif<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
             })?;
             let mut writer = std::io::BufWriter::new(file);
             let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut writer, 95);
-            img.write_with_encoder(encoder).map_err(|e| DxError::FileIo {
-                path: output_path.to_path_buf(),
-                message: format!("Failed to save image: {}", e),
-                source: None,
-            })?;
+            img.write_with_encoder(encoder)
+                .map_err(|e| DxError::FileIo {
+                    path: output_path.to_path_buf(),
+                    message: format!("Failed to save image: {}", e),
+                    source: None,
+                })?;
         }
         _ => {
             img.save(output_path).map_err(|e| DxError::FileIo {
@@ -239,10 +242,10 @@ pub fn wipe_exif<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
             })?;
         }
     }
-    
+
     // Verify EXIF was removed
     let new_info = read_exif(output_path).unwrap_or_default();
-    
+
     let mut message = String::from("Removed EXIF metadata");
     if had_gps {
         message.push_str(" including GPS location data");
@@ -250,7 +253,7 @@ pub fn wipe_exif<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     if original_info.make.is_some() {
         message.push_str(", camera info");
     }
-    
+
     Ok(ToolOutput::success_with_path(message, output_path)
         .with_metadata("had_gps", had_gps.to_string())
         .with_metadata("original_make", original_info.make.unwrap_or_default())
@@ -261,15 +264,15 @@ pub fn wipe_exif<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
 pub fn wipe_exif_inplace<P: AsRef<Path>>(path: P) -> Result<ToolOutput> {
     let path = path.as_ref();
     let temp_path = path.with_extension("tmp_stripped");
-    
+
     let result = wipe_exif(path, &temp_path)?;
-    
+
     std::fs::rename(&temp_path, path).map_err(|e| DxError::FileIo {
         path: path.to_path_buf(),
         message: format!("Failed to replace original: {}", e),
         source: None,
     })?;
-    
+
     Ok(result)
 }
 
@@ -281,26 +284,29 @@ pub fn batch_wipe_exif<P: AsRef<Path>>(inputs: &[P], output_dir: P) -> Result<To
         message: format!("Failed to create directory: {}", e),
         source: None,
     })?;
-    
+
     let mut processed = Vec::new();
     let mut gps_removed = 0u32;
-    
+
     for input in inputs {
         let input_path = input.as_ref();
-        let file_name = input_path.file_name().and_then(|s| s.to_str()).unwrap_or("output.jpg");
+        let file_name = input_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("output.jpg");
         let output_path = output_dir.join(file_name);
-        
+
         if let Ok(info) = read_exif(input_path) {
             if info.has_gps() {
                 gps_removed += 1;
             }
         }
-        
+
         if wipe_exif(input_path, &output_path).is_ok() {
             processed.push(output_path);
         }
     }
-    
+
     Ok(ToolOutput::success(format!(
         "Stripped EXIF from {} images ({} had GPS data)",
         processed.len(),
@@ -312,7 +318,7 @@ pub fn batch_wipe_exif<P: AsRef<Path>>(inputs: &[P], output_dir: P) -> Result<To
 /// Print EXIF metadata in a readable format.
 pub fn format_exif_info(info: &ExifInfo) -> String {
     let mut lines = Vec::new();
-    
+
     if let Some(make) = &info.make {
         lines.push(format!("Camera Make: {}", make));
     }
@@ -342,7 +348,7 @@ pub fn format_exif_info(info: &ExifInfo) -> String {
     if let Some(fl) = info.focal_length {
         lines.push(format!("Focal Length: {:.0}mm", fl));
     }
-    
+
     if lines.is_empty() {
         "No EXIF metadata found".to_string()
     } else {
@@ -353,17 +359,17 @@ pub fn format_exif_info(info: &ExifInfo) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_exif_info_has_gps() {
         let mut info = ExifInfo::default();
         assert!(!info.has_gps());
-        
+
         info.gps_latitude = Some(40.7128);
         info.gps_longitude = Some(-74.0060);
         assert!(info.has_gps());
     }
-    
+
     #[test]
     fn test_parse_rational() {
         assert_eq!(parse_rational("f/2.8"), Some(2.8));

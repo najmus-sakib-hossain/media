@@ -3,11 +3,11 @@
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::cli::args::{OutputFormat, SearchArgs};
+use crate::DxMedia;
 use crate::cli::OutputFormatter;
+use crate::cli::args::{OutputFormat, SearchArgs};
 use crate::error::Result;
 use crate::types::SearchQuery;
-use crate::DxMedia;
 
 /// Execute the search command.
 pub async fn execute(args: SearchArgs, format: OutputFormat, quiet: bool) -> Result<()> {
@@ -59,7 +59,8 @@ pub async fn execute(args: SearchArgs, format: OutputFormat, quiet: bool) -> Res
 
         let asset = &result.assets[0];
         let path = if let Some(ref output_dir) = args.output {
-            dx.download_to(asset, std::path::Path::new(output_dir)).await?
+            dx.download_to(asset, std::path::Path::new(output_dir))
+                .await?
         } else {
             dx.download(asset).await?
         };

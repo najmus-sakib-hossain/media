@@ -3,9 +3,9 @@
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 
+use crate::DxMedia;
 use crate::cli::args::DownloadArgs;
 use crate::error::{DxError, Result};
-use crate::DxMedia;
 
 /// Execute the download command.
 pub async fn execute(args: DownloadArgs, quiet: bool) -> Result<()> {
@@ -55,24 +55,30 @@ pub async fn execute(args: DownloadArgs, quiet: bool) -> Result<()> {
 
     // Download
     let path = if let Some(ref output_dir) = args.output {
-        dx.download_to(asset, std::path::Path::new(output_dir)).await?
+        dx.download_to(asset, std::path::Path::new(output_dir))
+            .await?
     } else {
         dx.download(asset).await?
     };
 
     // Rename if custom filename provided
     if let Some(ref filename) = args.filename {
-        let new_path = path.parent().unwrap_or(std::path::Path::new(".")).join(filename);
-        tokio::fs::rename(&path, &new_path).await.map_err(|e| DxError::FileIo {
-            path: path.clone(),
-            message: format!("Failed to rename file: {}", e),
-            source: Some(e),
-        })?;
-        
+        let new_path = path
+            .parent()
+            .unwrap_or(std::path::Path::new("."))
+            .join(filename);
+        tokio::fs::rename(&path, &new_path)
+            .await
+            .map_err(|e| DxError::FileIo {
+                path: path.clone(),
+                message: format!("Failed to rename file: {}", e),
+                source: Some(e),
+            })?;
+
         if let Some(pb) = spinner {
             pb.finish_and_clear();
         }
-        
+
         if !quiet {
             println!("{} {}", "Downloaded:".green().bold(), new_path.display());
         }
@@ -80,7 +86,7 @@ pub async fn execute(args: DownloadArgs, quiet: bool) -> Result<()> {
         if let Some(pb) = spinner {
             pb.finish_and_clear();
         }
-        
+
         if !quiet {
             println!("{} {}", "Downloaded:".green().bold(), path.display());
         }

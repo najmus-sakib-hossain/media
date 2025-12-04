@@ -63,12 +63,14 @@ impl FileManager {
     /// Ensure the target directory exists.
     pub async fn ensure_dir(&self, asset: &MediaAsset) -> Result<PathBuf> {
         let dir = self.target_dir(asset);
-        
-        tokio::fs::create_dir_all(&dir).await.map_err(|e| DxError::FileIo {
-            path: dir.clone(),
-            message: format!("Failed to create directory: {}", e),
-            source: Some(e),
-        })?;
+
+        tokio::fs::create_dir_all(&dir)
+            .await
+            .map_err(|e| DxError::FileIo {
+                path: dir.clone(),
+                message: format!("Failed to create directory: {}", e),
+                source: Some(e),
+            })?;
 
         Ok(dir)
     }
@@ -80,37 +82,40 @@ impl FileManager {
 
     /// Get file size if file exists.
     pub async fn file_size(&self, path: &Path) -> Option<u64> {
-        tokio::fs::metadata(path)
-            .await
-            .ok()
-            .map(|m| m.len())
+        tokio::fs::metadata(path).await.ok().map(|m| m.len())
     }
 
     /// Delete a file.
     pub async fn delete_file(&self, path: &Path) -> Result<()> {
-        tokio::fs::remove_file(path).await.map_err(|e| DxError::FileIo {
-            path: path.to_path_buf(),
-            message: format!("Failed to delete file: {}", e),
-            source: Some(e),
-        })
+        tokio::fs::remove_file(path)
+            .await
+            .map_err(|e| DxError::FileIo {
+                path: path.to_path_buf(),
+                message: format!("Failed to delete file: {}", e),
+                source: Some(e),
+            })
     }
 
     /// Rename/move a file.
     pub async fn rename_file(&self, from: &Path, to: &Path) -> Result<()> {
         // Ensure target directory exists
         if let Some(parent) = to.parent() {
-            tokio::fs::create_dir_all(parent).await.map_err(|e| DxError::FileIo {
-                path: parent.to_path_buf(),
-                message: format!("Failed to create directory: {}", e),
-                source: Some(e),
-            })?;
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| DxError::FileIo {
+                    path: parent.to_path_buf(),
+                    message: format!("Failed to create directory: {}", e),
+                    source: Some(e),
+                })?;
         }
 
-        tokio::fs::rename(from, to).await.map_err(|e| DxError::FileIo {
-            path: from.to_path_buf(),
-            message: format!("Failed to rename file: {}", e),
-            source: Some(e),
-        })
+        tokio::fs::rename(from, to)
+            .await
+            .map_err(|e| DxError::FileIo {
+                path: from.to_path_buf(),
+                message: format!("Failed to rename file: {}", e),
+                source: Some(e),
+            })
     }
 
     /// Get the base directory.
@@ -122,11 +127,13 @@ impl FileManager {
     /// List files in a directory.
     pub async fn list_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
         let mut files = Vec::new();
-        let mut entries = tokio::fs::read_dir(dir).await.map_err(|e| DxError::FileIo {
-            path: dir.to_path_buf(),
-            message: format!("Failed to read directory: {}", e),
-            source: Some(e),
-        })?;
+        let mut entries = tokio::fs::read_dir(dir)
+            .await
+            .map_err(|e| DxError::FileIo {
+                path: dir.to_path_buf(),
+                message: format!("Failed to read directory: {}", e),
+                source: Some(e),
+            })?;
 
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
@@ -165,7 +172,7 @@ mod tests {
     fn test_target_dir_default() {
         let fm = FileManager::new("/downloads");
         let asset = test_asset();
-        
+
         assert_eq!(fm.target_dir(&asset), PathBuf::from("/downloads"));
     }
 
@@ -173,7 +180,7 @@ mod tests {
     fn test_target_dir_by_provider() {
         let fm = FileManager::new("/downloads").organize_by_provider(true);
         let asset = test_asset();
-        
+
         assert_eq!(fm.target_dir(&asset), PathBuf::from("/downloads/unsplash"));
     }
 
@@ -181,7 +188,7 @@ mod tests {
     fn test_target_dir_by_type() {
         let fm = FileManager::new("/downloads").organize_by_type(true);
         let asset = test_asset();
-        
+
         assert_eq!(fm.target_dir(&asset), PathBuf::from("/downloads/images"));
     }
 
@@ -191,7 +198,10 @@ mod tests {
             .organize_by_provider(true)
             .organize_by_type(true);
         let asset = test_asset();
-        
-        assert_eq!(fm.target_dir(&asset), PathBuf::from("/downloads/unsplash/images"));
+
+        assert_eq!(
+            fm.target_dir(&asset),
+            PathBuf::from("/downloads/unsplash/images")
+        );
     }
 }

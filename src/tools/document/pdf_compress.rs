@@ -34,7 +34,7 @@ impl CompressionQuality {
             CompressionQuality::Default => "/default",
         }
     }
-    
+
     /// Get human-readable description.
     pub fn description(&self) -> &str {
         match self {
@@ -71,7 +71,7 @@ pub fn compress_pdf<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -79,13 +79,11 @@ pub fn compress_pdf<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let input_size = std::fs::metadata(input_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let input_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
+
     let gs_cmd = if cfg!(windows) { "gswin64c" } else { "gs" };
-    
+
     let mut cmd = Command::new(gs_cmd);
     cmd.arg("-sDEVICE=pdfwrite")
         .arg("-dCompatibilityLevel=1.4")
@@ -95,12 +93,12 @@ pub fn compress_pdf<P: AsRef<Path>>(
         .arg("-dBATCH")
         .arg(format!("-sOutputFile={}", output_path.to_string_lossy()))
         .arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run Ghostscript: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -110,17 +108,15 @@ pub fn compress_pdf<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     let reduction = if input_size > 0 {
         100.0 - (output_size as f64 / input_size as f64 * 100.0)
     } else {
         0.0
     };
-    
+
     let mut result = ToolOutput::success_with_path(
         format!(
             "Compressed PDF ({} -> {} bytes, {:.1}% reduction)",
@@ -128,22 +124,24 @@ pub fn compress_pdf<P: AsRef<Path>>(
         ),
         output_path,
     );
-    result.metadata.insert("original_size".to_string(), input_size.to_string());
-    result.metadata.insert("compressed_size".to_string(), output_size.to_string());
-    result.metadata.insert("reduction_percent".to_string(), format!("{:.1}", reduction));
-    
+    result
+        .metadata
+        .insert("original_size".to_string(), input_size.to_string());
+    result
+        .metadata
+        .insert("compressed_size".to_string(), output_size.to_string());
+    result
+        .metadata
+        .insert("reduction_percent".to_string(), format!("{:.1}", reduction));
+
     Ok(result)
 }
 
 /// Compress PDF with custom DPI setting.
-pub fn compress_pdf_custom<P: AsRef<Path>>(
-    input: P,
-    output: P,
-    dpi: u32,
-) -> Result<ToolOutput> {
+pub fn compress_pdf_custom<P: AsRef<Path>>(input: P, output: P, dpi: u32) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -151,13 +149,11 @@ pub fn compress_pdf_custom<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let input_size = std::fs::metadata(input_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let input_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
+
     let gs_cmd = if cfg!(windows) { "gswin64c" } else { "gs" };
-    
+
     let mut cmd = Command::new(gs_cmd);
     cmd.arg("-sDEVICE=pdfwrite")
         .arg("-dCompatibilityLevel=1.4")
@@ -172,12 +168,12 @@ pub fn compress_pdf_custom<P: AsRef<Path>>(
         .arg(format!("-dMonoImageResolution={}", dpi))
         .arg(format!("-sOutputFile={}", output_path.to_string_lossy()))
         .arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run Ghostscript: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -187,17 +183,15 @@ pub fn compress_pdf_custom<P: AsRef<Path>>(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     let reduction = if input_size > 0 {
         100.0 - (output_size as f64 / input_size as f64 * 100.0)
     } else {
         0.0
     };
-    
+
     Ok(ToolOutput::success_with_path(
         format!(
             "Compressed PDF at {} DPI ({:.1}% reduction)",
@@ -211,15 +205,13 @@ pub fn compress_pdf_custom<P: AsRef<Path>>(
 pub fn linearize_pdf<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     // qpdf is better for linearization
     let mut cmd = Command::new("qpdf");
-    cmd.arg("--linearize")
-        .arg(input_path)
-        .arg(output_path);
-    
+    cmd.arg("--linearize").arg(input_path).arg(output_path);
+
     let result = cmd.output();
-    
+
     if let Ok(result) = result {
         if result.status.success() {
             return Ok(ToolOutput::success_with_path(
@@ -228,10 +220,10 @@ pub fn linearize_pdf<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> 
             ));
         }
     }
-    
+
     // Fall back to Ghostscript with fast web view
     let gs_cmd = if cfg!(windows) { "gswin64c" } else { "gs" };
-    
+
     let mut cmd = Command::new(gs_cmd);
     cmd.arg("-sDEVICE=pdfwrite")
         .arg("-dFastWebView=true")
@@ -240,19 +232,19 @@ pub fn linearize_pdf<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> 
         .arg("-dBATCH")
         .arg(format!("-sOutputFile={}", output_path.to_string_lossy()))
         .arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run Ghostscript: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "PDF linearization failed".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Linearized PDF for fast web viewing",
         output_path,
@@ -263,9 +255,9 @@ pub fn linearize_pdf<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> 
 pub fn clean_pdf<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let gs_cmd = if cfg!(windows) { "gswin64c" } else { "gs" };
-    
+
     let mut cmd = Command::new(gs_cmd);
     cmd.arg("-sDEVICE=pdfwrite")
         .arg("-dNOPAUSE")
@@ -277,19 +269,19 @@ pub fn clean_pdf<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
         .arg("-dSubsetFonts=true")
         .arg(format!("-sOutputFile={}", output_path.to_string_lossy()))
         .arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run Ghostscript: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "PDF cleaning failed".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Cleaned PDF (removed duplicates, optimized fonts)",
         output_path,
@@ -308,10 +300,10 @@ pub fn batch_compress<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut compressed = Vec::new();
     let mut total_saved: u64 = 0;
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_name = input_path
@@ -319,11 +311,9 @@ pub fn batch_compress<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("document.pdf");
         let output_path = output_dir.join(format!("compressed_{}", file_name));
-        
-        let input_size = std::fs::metadata(input_path)
-            .map(|m| m.len())
-            .unwrap_or(0);
-        
+
+        let input_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
+
         if compress_pdf(input_path, &output_path, quality).is_ok() {
             let output_size = std::fs::metadata(&output_path)
                 .map(|m| m.len())
@@ -332,21 +322,23 @@ pub fn batch_compress<P: AsRef<Path>>(
             compressed.push(output_path);
         }
     }
-    
+
     let mut result = ToolOutput::success(format!(
         "Compressed {} PDFs (saved {} bytes total)",
         compressed.len(),
         total_saved
     ));
-    result.metadata.insert("total_saved".to_string(), total_saved.to_string());
-    
+    result
+        .metadata
+        .insert("total_saved".to_string(), total_saved.to_string());
+
     Ok(result.with_paths(compressed))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_compression_quality() {
         assert_eq!(CompressionQuality::Screen.gs_setting(), "/screen");

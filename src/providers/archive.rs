@@ -1,7 +1,7 @@
 //! Internet Archive provider implementation.
 //!
 //! [Internet Archive API](https://archive.org/developers/)
-//! 
+//!
 //! Provides access to millions of free media items including images, audio, video, and texts.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Internet Archive provider for free digital content.
 /// Access to millions of images, audio, video, and documents.
@@ -88,7 +86,12 @@ impl Provider for InternetArchiveProvider {
     }
 
     fn supported_media_types(&self) -> &[MediaType] {
-        &[MediaType::Image, MediaType::Video, MediaType::Audio, MediaType::Document]
+        &[
+            MediaType::Image,
+            MediaType::Video,
+            MediaType::Audio,
+            MediaType::Document,
+        ]
     }
 
     fn requires_api_key(&self) -> bool {
@@ -109,7 +112,7 @@ impl Provider for InternetArchiveProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/advancedsearch.php", self.base_url());
-        
+
         // Build search query with media type filter
         let media_filter = Self::media_type_query(query.media_type);
         let search_query = if media_filter.is_empty() {
@@ -117,23 +120,23 @@ impl Provider for InternetArchiveProvider {
         } else {
             format!("{} AND {}", query.query, media_filter)
         };
-        
+
         let page_str = query.page.to_string();
         let rows_str = query.count.min(100).to_string();
-        
+
         let params = [
             ("q", search_query.as_str()),
-            ("fl[]", "identifier,title,description,mediatype,creator,licenseurl,downloads"),
+            (
+                "fl[]",
+                "identifier,title,description,mediatype,creator,licenseurl,downloads",
+            ),
             ("sort[]", "downloads desc"),
             ("rows", &rows_str),
             ("page", &page_str),
             ("output", "json"),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: ArchiveSearchResponse = response.json_or_error().await?;
 
@@ -144,7 +147,7 @@ impl Provider for InternetArchiveProvider {
             .map(|doc| {
                 let media_type = Self::parse_media_type(&doc.mediatype);
                 let license = Self::parse_license(doc.licenseurl.as_deref());
-                
+
                 // Construct URLs for Internet Archive items
                 let identifier = &doc.identifier;
                 let source_url = format!("https://archive.org/details/{}", identifier);
@@ -229,7 +232,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = InternetArchiveProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "archive");
         assert_eq!(provider.display_name(), "Internet Archive");
         assert!(!provider.requires_api_key());
@@ -238,15 +241,37 @@ mod tests {
 
     #[test]
     fn test_media_type_parsing() {
-        assert_eq!(InternetArchiveProvider::parse_media_type("image"), MediaType::Image);
-        assert_eq!(InternetArchiveProvider::parse_media_type("movies"), MediaType::Video);
-        assert_eq!(InternetArchiveProvider::parse_media_type("audio"), MediaType::Audio);
-        assert_eq!(InternetArchiveProvider::parse_media_type("texts"), MediaType::Document);
+        assert_eq!(
+            InternetArchiveProvider::parse_media_type("image"),
+            MediaType::Image
+        );
+        assert_eq!(
+            InternetArchiveProvider::parse_media_type("movies"),
+            MediaType::Video
+        );
+        assert_eq!(
+            InternetArchiveProvider::parse_media_type("audio"),
+            MediaType::Audio
+        );
+        assert_eq!(
+            InternetArchiveProvider::parse_media_type("texts"),
+            MediaType::Document
+        );
     }
 
     #[test]
     fn test_license_parsing() {
-        assert!(matches!(InternetArchiveProvider::parse_license(Some("https://creativecommons.org/publicdomain/zero/1.0/")), License::Cc0));
-        assert!(matches!(InternetArchiveProvider::parse_license(Some("https://creativecommons.org/licenses/by/4.0/")), License::CcBy));
+        assert!(matches!(
+            InternetArchiveProvider::parse_license(Some(
+                "https://creativecommons.org/publicdomain/zero/1.0/"
+            )),
+            License::Cc0
+        ));
+        assert!(matches!(
+            InternetArchiveProvider::parse_license(Some(
+                "https://creativecommons.org/licenses/by/4.0/"
+            )),
+            License::CcBy
+        ));
     }
 }

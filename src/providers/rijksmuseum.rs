@@ -1,7 +1,7 @@
 //! Rijksmuseum provider implementation.
 //!
 //! [Rijksmuseum API](https://data.rijksmuseum.nl)
-//! 
+//!
 //! Provides access to 700,000+ CC0 licensed artworks from the Dutch National Museum.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Rijksmuseum provider for Dutch masterpieces.
 /// Access to 700K+ CC0 licensed artworks including Rembrandt, Vermeer, and more.
@@ -73,10 +71,10 @@ impl Provider for RijksmuseumProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = self.base_url().to_string();
-        
+
         let count = query.count.min(100).to_string();
         let page = query.page.to_string();
-        
+
         // Rijksmuseum provides a free demo API key
         let params = [
             ("key", "0fiuZFh4"),
@@ -86,10 +84,7 @@ impl Provider for RijksmuseumProvider {
             ("imgonly", "true"),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: RijksmuseumResponse = response.json_or_error().await?;
 
@@ -98,19 +93,24 @@ impl Provider for RijksmuseumProvider {
             .into_iter()
             .filter_map(|obj| {
                 let web_image = obj.webImage?;
-                
-                Some(MediaAsset::builder()
-                    .id(obj.objectNumber.clone())
-                    .provider("rijksmuseum")
-                    .media_type(MediaType::Image)
-                    .title(obj.title)
-                    .download_url(web_image.url.clone())
-                    .preview_url(web_image.url)
-                    .source_url(obj.links.web.unwrap_or_default())
-                    .author(obj.principalOrFirstMaker)
-                    .license(License::Cc0)
-                    .dimensions(web_image.width.unwrap_or(0) as u32, web_image.height.unwrap_or(0) as u32)
-                    .build())
+
+                Some(
+                    MediaAsset::builder()
+                        .id(obj.objectNumber.clone())
+                        .provider("rijksmuseum")
+                        .media_type(MediaType::Image)
+                        .title(obj.title)
+                        .download_url(web_image.url.clone())
+                        .preview_url(web_image.url)
+                        .source_url(obj.links.web.unwrap_or_default())
+                        .author(obj.principalOrFirstMaker)
+                        .license(License::Cc0)
+                        .dimensions(
+                            web_image.width.unwrap_or(0) as u32,
+                            web_image.height.unwrap_or(0) as u32,
+                        )
+                        .build(),
+                )
             })
             .collect();
 

@@ -1,7 +1,7 @@
 //! Digital Public Library of America (DPLA) provider implementation.
 //!
 //! [DPLA API](https://pro.dp.la/developers)
-//! 
+//!
 //! Provides access to 40+ million items from US libraries, archives, and museums.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// DPLA provider for American cultural heritage.
 /// Access to 40M+ items from US libraries, archives, and museums.
@@ -64,7 +62,12 @@ impl Provider for DplaProvider {
     }
 
     fn supported_media_types(&self) -> &[MediaType] {
-        &[MediaType::Image, MediaType::Document, MediaType::Audio, MediaType::Video]
+        &[
+            MediaType::Image,
+            MediaType::Document,
+            MediaType::Audio,
+            MediaType::Video,
+        ]
     }
 
     fn requires_api_key(&self) -> bool {
@@ -85,10 +88,10 @@ impl Provider for DplaProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/items", self.base_url());
-        
+
         let page_size = query.count.min(500).to_string();
         let page_str = query.page.to_string();
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("page_size", page_size.as_str()),
@@ -96,10 +99,7 @@ impl Provider for DplaProvider {
             ("api_key", "d770e5fbf41bb07131ef8f21d6bec4c8"), // Public DPLA demo key
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: DplaSearchResponse = response.json_or_error().await?;
 
@@ -109,18 +109,25 @@ impl Provider for DplaProvider {
             .filter_map(|doc| {
                 let preview = doc.object.as_ref()?.clone();
                 let title = doc.sourceResource.title.as_ref()?.first()?.clone();
-                
-                Some(MediaAsset::builder()
-                    .id(doc.id.clone())
-                    .provider("dpla")
-                    .media_type(MediaType::Image)
-                    .title(title)
-                    .download_url(preview.clone())
-                    .preview_url(preview)
-                    .source_url(doc.isShownAt.unwrap_or_default())
-                    .author(doc.sourceResource.creator.unwrap_or_default().join(", "))
-                    .license(Self::parse_license(doc.sourceResource.rights.as_ref().and_then(|v| v.first().map(|s| s.as_str()))))
-                    .build())
+
+                Some(
+                    MediaAsset::builder()
+                        .id(doc.id.clone())
+                        .provider("dpla")
+                        .media_type(MediaType::Image)
+                        .title(title)
+                        .download_url(preview.clone())
+                        .preview_url(preview)
+                        .source_url(doc.isShownAt.unwrap_or_default())
+                        .author(doc.sourceResource.creator.unwrap_or_default().join(", "))
+                        .license(Self::parse_license(
+                            doc.sourceResource
+                                .rights
+                                .as_ref()
+                                .and_then(|v| v.first().map(|s| s.as_str())),
+                        ))
+                        .build(),
+                )
             })
             .collect();
 
@@ -207,8 +214,17 @@ mod tests {
 
     #[test]
     fn test_license_parsing() {
-        assert!(matches!(DplaProvider::parse_license(Some("Public Domain")), License::PublicDomain));
-        assert!(matches!(DplaProvider::parse_license(Some("CC0")), License::Cc0));
-        assert!(matches!(DplaProvider::parse_license(Some("CC BY 4.0")), License::CcBy));
+        assert!(matches!(
+            DplaProvider::parse_license(Some("Public Domain")),
+            License::PublicDomain
+        ));
+        assert!(matches!(
+            DplaProvider::parse_license(Some("CC0")),
+            License::Cc0
+        ));
+        assert!(matches!(
+            DplaProvider::parse_license(Some("CC BY 4.0")),
+            License::CcBy
+        ));
     }
 }

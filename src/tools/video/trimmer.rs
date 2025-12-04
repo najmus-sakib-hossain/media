@@ -43,7 +43,7 @@ impl TrimOptions {
             keyframe_seek: false,
         }
     }
-    
+
     /// Create trim options with start and duration.
     pub fn with_duration(start: f64, duration: f64) -> Self {
         Self {
@@ -54,13 +54,13 @@ impl TrimOptions {
             keyframe_seek: false,
         }
     }
-    
+
     /// Set trim mode.
     pub fn with_mode(mut self, mode: TrimMode) -> Self {
         self.mode = mode;
         self
     }
-    
+
     /// Enable keyframe seeking (faster but less precise).
     pub fn with_keyframe_seek(mut self) -> Self {
         self.keyframe_seek = true;
@@ -83,12 +83,7 @@ impl TrimOptions {
 /// // Extract 30 seconds starting at 1 minute
 /// trim_video("full.mp4", "clip.mp4", 60.0, 90.0).unwrap();
 /// ```
-pub fn trim_video<P: AsRef<Path>>(
-    input: P,
-    output: P,
-    start: f64,
-    end: f64,
-) -> Result<ToolOutput> {
+pub fn trim_video<P: AsRef<Path>>(input: P, output: P, start: f64, end: f64) -> Result<ToolOutput> {
     trim_video_with_options(input, output, TrimOptions::new(start, end))
 }
 
@@ -100,7 +95,7 @@ pub fn trim_video_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -108,22 +103,22 @@ pub fn trim_video_with_options<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y");
-    
+
     // Keyframe seeking (before input for faster seek)
     if options.keyframe_seek {
         cmd.arg("-ss").arg(format_time(options.start));
     }
-    
+
     cmd.arg("-i").arg(input_path);
-    
+
     // Accurate seeking (after input for precise cuts)
     if !options.keyframe_seek {
         cmd.arg("-ss").arg(format_time(options.start));
     }
-    
+
     // Duration or end time
     if let Some(duration) = options.duration {
         cmd.arg("-t").arg(format_time(duration));
@@ -133,7 +128,7 @@ pub fn trim_video_with_options<P: AsRef<Path>>(
             cmd.arg("-t").arg(format_time(duration));
         }
     }
-    
+
     // Codec settings
     match options.mode {
         TrimMode::Copy => {
@@ -141,46 +136,43 @@ pub fn trim_video_with_options<P: AsRef<Path>>(
         }
         TrimMode::Reencode => {
             // Use default codecs
-            cmd.arg("-c:v").arg("libx264")
-                .arg("-crf").arg("18")
-                .arg("-c:a").arg("aac");
+            cmd.arg("-c:v")
+                .arg("libx264")
+                .arg("-crf")
+                .arg("18")
+                .arg("-c:a")
+                .arg("aac");
         }
     }
-    
+
     // Avoid negative timestamps
     cmd.arg("-avoid_negative_ts").arg("make_zero");
-    
+
     cmd.arg(output_path);
-    
+
     let output = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !output.status.success() {
         return Err(DxError::Config {
-            message: format!(
-                "FFmpeg failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ),
+            message: format!("FFmpeg failed: {}", String::from_utf8_lossy(&output.stderr)),
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
-    let duration = options.duration
+
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
+    let duration = options
+        .duration
         .or_else(|| options.end.map(|e| e - options.start))
         .unwrap_or(0.0);
-    
+
     Ok(ToolOutput::success_with_path(
         format!(
             "Trimmed {:.1}s from {:.1}s ({} bytes)",
-            duration,
-            options.start,
-            output_size
+            duration, options.start, output_size
         ),
         output_path,
     )
@@ -206,13 +198,13 @@ pub fn split_video<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let file_stem = input_path
         .file_stem()
         .and_then(|s| s.to_str())
@@ -221,25 +213,30 @@ pub fn split_video<P: AsRef<Path>>(
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("mp4");
-    
+
     let mut parts = Vec::new();
     let mut points = vec![0.0];
     points.extend(split_points);
-    
+
     for (i, window) in points.windows(2).enumerate() {
         let start = window[0];
         let end = window[1];
         let output_path = output_dir.join(format!("{}_{:03}.{}", file_stem, i + 1, extension));
-        
+
         if trim_video(input_path, &output_path, start, end).is_ok() {
             parts.push(output_path);
         }
     }
-    
+
     // Handle last segment (from last split point to end)
     if let Some(&last_point) = split_points.last() {
-        let output_path = output_dir.join(format!("{}_{:03}.{}", file_stem, parts.len() + 1, extension));
-        
+        let output_path = output_dir.join(format!(
+            "{}_{:03}.{}",
+            file_stem,
+            parts.len() + 1,
+            extension
+        ));
+
         // Trim from last point to end (no end time)
         let options = TrimOptions {
             start: last_point,
@@ -248,14 +245,13 @@ pub fn split_video<P: AsRef<Path>>(
             mode: TrimMode::Copy,
             keyframe_seek: false,
         };
-        
+
         if trim_video_with_options(input_path, &output_path, options).is_ok() {
             parts.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Split video into {} parts", parts.len()))
-        .with_paths(parts))
+
+    Ok(ToolOutput::success(format!("Split video into {} parts", parts.len())).with_paths(parts))
 }
 
 /// Format time in seconds to FFmpeg format (HH:MM:SS.mmm).
@@ -270,7 +266,7 @@ fn format_time(seconds: f64) -> String {
 /// Supports formats: "HH:MM:SS", "MM:SS", "SS", "HH:MM:SS.mmm"
 pub fn parse_time(time_str: &str) -> Option<f64> {
     let parts: Vec<&str> = time_str.split(':').collect();
-    
+
     match parts.len() {
         1 => parts[0].parse().ok(),
         2 => {
@@ -291,14 +287,14 @@ pub fn parse_time(time_str: &str) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_format_time() {
         assert_eq!(format_time(0.0), "00:00:00.000");
         assert_eq!(format_time(61.5), "00:01:01.500");
         assert_eq!(format_time(3661.0), "01:01:01.000");
     }
-    
+
     #[test]
     fn test_parse_time() {
         assert_eq!(parse_time("30"), Some(30.0));
@@ -306,7 +302,7 @@ mod tests {
         assert_eq!(parse_time("1:01:30"), Some(3690.0));
         assert_eq!(parse_time("0:00:30.5"), Some(30.5));
     }
-    
+
     #[test]
     fn test_trim_options() {
         let opts = TrimOptions::new(10.0, 20.0);

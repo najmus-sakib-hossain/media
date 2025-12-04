@@ -52,7 +52,7 @@ impl SplitOptions {
             ..Default::default()
         }
     }
-    
+
     /// Split at silence.
     pub fn at_silence(threshold_db: f32, min_duration: f64) -> Self {
         Self {
@@ -63,7 +63,7 @@ impl SplitOptions {
             ..Default::default()
         }
     }
-    
+
     /// Split into equal parts.
     pub fn into_parts(count: u32) -> Self {
         Self {
@@ -94,7 +94,7 @@ pub fn split_audio<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -102,22 +102,27 @@ pub fn split_audio<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     match options.method {
-        SplitMethod::Duration(duration) => split_by_duration(input_path, output_dir, duration, &options),
-        SplitMethod::Silence { threshold_db, min_duration } => {
-            split_by_silence(input_path, output_dir, threshold_db, min_duration, &options)
+        SplitMethod::Duration(duration) => {
+            split_by_duration(input_path, output_dir, duration, &options)
         }
+        SplitMethod::Silence {
+            threshold_db,
+            min_duration,
+        } => split_by_silence(input_path, output_dir, threshold_db, min_duration, &options),
         SplitMethod::Timestamps(ref timestamps) => {
             split_at_timestamps(input_path, output_dir, timestamps, &options)
         }
-        SplitMethod::EqualParts(count) => split_equal_parts(input_path, output_dir, count, &options),
+        SplitMethod::EqualParts(count) => {
+            split_equal_parts(input_path, output_dir, count, &options)
+        }
     }
 }
 
@@ -128,10 +133,8 @@ fn split_by_duration(
     duration: f64,
     options: &SplitOptions,
 ) -> Result<ToolOutput> {
-    let extension = input.extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("mp3");
-    
+    let extension = input.extension().and_then(|e| e.to_str()).unwrap_or("mp3");
+
     let pattern = format!(
         "{}/{}.%0{}d.{}",
         output_dir.to_string_lossy(),
@@ -139,20 +142,24 @@ fn split_by_duration(
         options.zero_pad,
         extension
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input)
-        .arg("-f").arg("segment")
-        .arg("-segment_time").arg(format!("{:.3}", duration))
-        .arg("-c").arg("copy")
+        .arg("-i")
+        .arg(input)
+        .arg("-f")
+        .arg("segment")
+        .arg("-segment_time")
+        .arg(format!("{:.3}", duration))
+        .arg("-c")
+        .arg("copy")
         .arg(&pattern);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -162,13 +169,16 @@ fn split_by_duration(
             source: None,
         });
     }
-    
+
     // Count output files
     let count = std::fs::read_dir(output_dir)
         .map(|entries| entries.filter(|e| e.is_ok()).count())
         .unwrap_or(0);
-    
-    Ok(ToolOutput::success(format!("Split into {} segments of {:.0}s", count, duration)))
+
+    Ok(ToolOutput::success(format!(
+        "Split into {} segments of {:.0}s",
+        count, duration
+    )))
 }
 
 /// Split at silence gaps.
@@ -188,12 +198,10 @@ fn split_by_silence(
             padding: 0.0,
         },
     )?;
-    
+
     if silences.is_empty() {
         // No silence found, just copy the file
-        let extension = input.extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("mp3");
+        let extension = input.extension().and_then(|e| e.to_str()).unwrap_or("mp3");
         let output_path = output_dir.join(format!(
             "{}.{}",
             options.pattern.replace("{n}", "001"),
@@ -206,13 +214,10 @@ fn split_by_silence(
         })?;
         return Ok(ToolOutput::success("No silence found, file copied as-is"));
     }
-    
+
     // Split at midpoints of silence gaps
-    let timestamps: Vec<f64> = silences
-        .iter()
-        .map(|s| (s.start + s.end) / 2.0)
-        .collect();
-    
+    let timestamps: Vec<f64> = silences.iter().map(|s| (s.start + s.end) / 2.0).collect();
+
     split_at_timestamps(input, output_dir, &timestamps, options)
 }
 
@@ -223,64 +228,72 @@ fn split_at_timestamps(
     timestamps: &[f64],
     options: &SplitOptions,
 ) -> Result<ToolOutput> {
-    let extension = input.extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("mp3");
-    
+    let extension = input.extension().and_then(|e| e.to_str()).unwrap_or("mp3");
+
     // Get total duration
     let total_duration = super::trimmer::get_audio_duration(input)?;
-    
+
     let mut segments = Vec::new();
     let mut start = 0.0;
-    
+
     for (i, &end) in timestamps.iter().enumerate() {
         if end <= start || end > total_duration {
             continue;
         }
-        
+
         let output_name = options.pattern.replace(
             "{n}",
-            &format!("{:0>width$}", i + 1, width = options.zero_pad as usize)
+            &format!("{:0>width$}", i + 1, width = options.zero_pad as usize),
         );
         let output_path = output_dir.join(format!("{}.{}", output_name, extension));
-        
+
         let mut cmd = Command::new("ffmpeg");
         cmd.arg("-y")
-            .arg("-i").arg(input)
-            .arg("-ss").arg(format!("{:.3}", start))
-            .arg("-t").arg(format!("{:.3}", end - start))
-            .arg("-c").arg("copy")
+            .arg("-i")
+            .arg(input)
+            .arg("-ss")
+            .arg(format!("{:.3}", start))
+            .arg("-t")
+            .arg(format!("{:.3}", end - start))
+            .arg("-c")
+            .arg("copy")
             .arg(&output_path);
-        
+
         if cmd.output().map(|o| o.status.success()).unwrap_or(false) {
             segments.push(output_path);
         }
-        
+
         start = end;
     }
-    
+
     // Final segment
     if start < total_duration {
         let output_name = options.pattern.replace(
             "{n}",
-            &format!("{:0>width$}", segments.len() + 1, width = options.zero_pad as usize)
+            &format!(
+                "{:0>width$}",
+                segments.len() + 1,
+                width = options.zero_pad as usize
+            ),
         );
         let output_path = output_dir.join(format!("{}.{}", output_name, extension));
-        
+
         let mut cmd = Command::new("ffmpeg");
         cmd.arg("-y")
-            .arg("-i").arg(input)
-            .arg("-ss").arg(format!("{:.3}", start))
-            .arg("-c").arg("copy")
+            .arg("-i")
+            .arg(input)
+            .arg("-ss")
+            .arg(format!("{:.3}", start))
+            .arg("-c")
+            .arg("copy")
             .arg(&output_path);
-        
+
         if cmd.output().map(|o| o.status.success()).unwrap_or(false) {
             segments.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Split into {} segments", segments.len()))
-        .with_paths(segments))
+
+    Ok(ToolOutput::success(format!("Split into {} segments", segments.len())).with_paths(segments))
 }
 
 /// Split into equal parts.
@@ -292,11 +305,9 @@ fn split_equal_parts(
 ) -> Result<ToolOutput> {
     let total_duration = super::trimmer::get_audio_duration(input)?;
     let segment_duration = total_duration / count as f64;
-    
-    let timestamps: Vec<f64> = (1..count)
-        .map(|i| i as f64 * segment_duration)
-        .collect();
-    
+
+    let timestamps: Vec<f64> = (1..count).map(|i| i as f64 * segment_duration).collect();
+
     split_at_timestamps(input, output_dir, &timestamps, options)
 }
 
@@ -304,108 +315,121 @@ fn split_equal_parts(
 pub fn split_by_chapters<P: AsRef<Path>>(input: P, output_dir: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     // Extract chapters using ffprobe
     let mut cmd = Command::new("ffprobe");
-    cmd.arg("-v").arg("quiet")
-        .arg("-print_format").arg("json")
+    cmd.arg("-v")
+        .arg("quiet")
+        .arg("-print_format")
+        .arg("json")
         .arg("-show_chapters")
         .arg(input_path);
-    
+
     let output = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run ffprobe: {}", e),
         source: None,
     })?;
-    
+
     let json_str = String::from_utf8_lossy(&output.stdout);
-    
+
     // Parse chapters
-    let parsed: serde_json::Value = serde_json::from_str(&json_str).map_err(|e| DxError::Config {
-        message: format!("Failed to parse chapters: {}", e),
-        source: None,
-    })?;
-    
-    let chapters = parsed.get("chapters")
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json_str).map_err(|e| DxError::Config {
+            message: format!("Failed to parse chapters: {}", e),
+            source: None,
+        })?;
+
+    let chapters = parsed
+        .get("chapters")
         .and_then(|c| c.as_array())
         .ok_or_else(|| DxError::Config {
             message: "No chapters found in file".to_string(),
             source: None,
         })?;
-    
+
     if chapters.is_empty() {
         return Err(DxError::Config {
             message: "No chapters found in file".to_string(),
             source: None,
         });
     }
-    
-    let extension = input_path.extension()
+
+    let extension = input_path
+        .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("mp3");
-    
+
     let mut segments = Vec::new();
-    
+
     for (i, chapter) in chapters.iter().enumerate() {
-        let start = chapter.get("start_time")
+        let start = chapter
+            .get("start_time")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(0.0);
-        
-        let end = chapter.get("end_time")
+
+        let end = chapter
+            .get("end_time")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(0.0);
-        
-        let title = chapter.get("tags")
+
+        let title = chapter
+            .get("tags")
             .and_then(|t| t.get("title"))
             .and_then(|v| v.as_str())
             .unwrap_or(&format!("chapter_{}", i + 1));
-        
+
         // Clean title for filename
         let clean_title: String = title
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == ' ' { c } else { '_' })
+            .map(|c| {
+                if c.is_alphanumeric() || c == ' ' {
+                    c
+                } else {
+                    '_'
+                }
+            })
             .collect();
-        
-        let output_path = output_dir.join(format!(
-            "{:02}_{}.{}",
-            i + 1,
-            clean_title.trim(),
-            extension
-        ));
-        
+
+        let output_path =
+            output_dir.join(format!("{:02}_{}.{}", i + 1, clean_title.trim(), extension));
+
         let mut cmd = Command::new("ffmpeg");
         cmd.arg("-y")
-            .arg("-i").arg(input_path)
-            .arg("-ss").arg(format!("{:.3}", start))
-            .arg("-t").arg(format!("{:.3}", end - start))
-            .arg("-c").arg("copy")
+            .arg("-i")
+            .arg(input_path)
+            .arg("-ss")
+            .arg(format!("{:.3}", start))
+            .arg("-t")
+            .arg(format!("{:.3}", end - start))
+            .arg("-c")
+            .arg("copy")
             .arg(&output_path);
-        
+
         if cmd.output().map(|o| o.status.success()).unwrap_or(false) {
             segments.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Split into {} chapters", segments.len()))
-        .with_paths(segments))
+
+    Ok(ToolOutput::success(format!("Split into {} chapters", segments.len())).with_paths(segments))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_split_options() {
         let duration = SplitOptions::every_seconds(30.0);
         assert!(matches!(duration.method, SplitMethod::Duration(30.0)));
-        
+
         let parts = SplitOptions::into_parts(5);
         assert!(matches!(parts.method, SplitMethod::EqualParts(5)));
     }

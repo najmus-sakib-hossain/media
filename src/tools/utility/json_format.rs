@@ -49,7 +49,7 @@ pub fn format_string(input: &str) -> Result<ToolOutput> {
 pub fn format_string_with_indent(input: &str, indent: JsonIndent) -> Result<ToolOutput> {
     // Parse and re-format
     let formatted = format_json_impl(input, indent)?;
-    
+
     Ok(ToolOutput::success(formatted.clone())
         .with_metadata("formatted", formatted)
         .with_metadata("valid", "true".to_string()))
@@ -59,35 +59,32 @@ pub fn format_string_with_indent(input: &str, indent: JsonIndent) -> Result<Tool
 pub fn format_json_file<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let content = std::fs::read_to_string(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let formatted = format_json_impl(&content, JsonIndent::Spaces2)?;
-    
+
     std::fs::write(output_path, &formatted).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to write file: {}", e),
         source: None,
     })?;
-    
-    Ok(ToolOutput::success_with_path(
-        "JSON formatted",
-        output_path,
-    ))
+
+    Ok(ToolOutput::success_with_path("JSON formatted", output_path))
 }
 
 /// Minify JSON (remove whitespace).
 pub fn minify_string(input: &str) -> Result<ToolOutput> {
     let minified = minify_json_impl(input)?;
-    
+
     let original_len = input.len();
     let minified_len = minified.len();
     let saved = original_len.saturating_sub(minified_len);
-    
+
     Ok(ToolOutput::success(minified.clone())
         .with_metadata("minified", minified)
         .with_metadata("original_size", original_len.to_string())
@@ -98,8 +95,7 @@ pub fn minify_string(input: &str) -> Result<ToolOutput> {
 /// Validate JSON.
 pub fn validate_string(input: &str) -> Result<ToolOutput> {
     match validate_json_impl(input) {
-        Ok(()) => Ok(ToolOutput::success("Valid JSON")
-            .with_metadata("valid", "true".to_string())),
+        Ok(()) => Ok(ToolOutput::success("Valid JSON").with_metadata("valid", "true".to_string())),
         Err(msg) => Ok(ToolOutput::success(format!("Invalid JSON: {}", msg))
             .with_metadata("valid", "false".to_string())
             .with_metadata("error", msg)),
@@ -113,7 +109,7 @@ pub fn validate_file<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     validate_string(&content)
 }
 
@@ -121,47 +117,45 @@ pub fn validate_file<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
 fn format_json_impl(input: &str, indent: JsonIndent) -> Result<String> {
     let indent_str = indent.indent();
     let compact = matches!(indent, JsonIndent::None);
-    
+
     let mut result = String::new();
     let mut depth = 0;
     let mut in_string = false;
     let mut escape_next = false;
     let chars: Vec<char> = input.chars().collect();
-    
+
     for (i, c) in chars.iter().enumerate() {
         if escape_next {
             result.push(*c);
             escape_next = false;
             continue;
         }
-        
+
         if *c == '\\' && in_string {
             result.push(*c);
             escape_next = true;
             continue;
         }
-        
+
         if *c == '"' {
             in_string = !in_string;
             result.push(*c);
             continue;
         }
-        
+
         if in_string {
             result.push(*c);
             continue;
         }
-        
+
         match c {
             '{' | '[' => {
                 result.push(*c);
                 depth += 1;
-                
+
                 // Check if next non-whitespace is closing bracket
-                let next_meaningful = chars[i + 1..]
-                    .iter()
-                    .find(|c| !c.is_whitespace());
-                
+                let next_meaningful = chars[i + 1..].iter().find(|c| !c.is_whitespace());
+
                 if next_meaningful != Some(&'}') && next_meaningful != Some(&']') {
                     if !compact {
                         result.push('\n');
@@ -173,7 +167,7 @@ fn format_json_impl(input: &str, indent: JsonIndent) -> Result<String> {
             }
             '}' | ']' => {
                 depth -= 1;
-                
+
                 // Check if previous non-whitespace was opening bracket
                 let prev = result.trim_end().chars().last();
                 if prev != Some('{') && prev != Some('[') {
@@ -184,7 +178,7 @@ fn format_json_impl(input: &str, indent: JsonIndent) -> Result<String> {
                         }
                     }
                 }
-                
+
                 result.push(*c);
             }
             ',' => {
@@ -210,7 +204,7 @@ fn format_json_impl(input: &str, indent: JsonIndent) -> Result<String> {
             }
         }
     }
-    
+
     Ok(result)
 }
 
@@ -227,24 +221,24 @@ fn validate_json_impl(input: &str) -> std::result::Result<(), String> {
     let mut expect_value = true;
     let mut expect_colon = false;
     let mut expect_comma_or_end = false;
-    
+
     let chars: Vec<char> = input.trim().chars().collect();
-    
+
     if chars.is_empty() {
         return Err("Empty input".to_string());
     }
-    
+
     for (i, c) in chars.iter().enumerate() {
         if escape_next {
             escape_next = false;
             continue;
         }
-        
+
         if *c == '\\' && in_string {
             escape_next = true;
             continue;
         }
-        
+
         if *c == '"' {
             in_string = !in_string;
             if !in_string {
@@ -253,11 +247,11 @@ fn validate_json_impl(input: &str) -> std::result::Result<(), String> {
             }
             continue;
         }
-        
+
         if in_string {
             continue;
         }
-        
+
         match c {
             ' ' | '\t' | '\n' | '\r' => continue,
             '{' | '[' => {
@@ -292,15 +286,15 @@ fn validate_json_impl(input: &str) -> std::result::Result<(), String> {
             }
         }
     }
-    
+
     if in_string {
         return Err("Unterminated string".to_string());
     }
-    
+
     if depth != 0 {
         return Err("Mismatched brackets".to_string());
     }
-    
+
     Ok(())
 }
 
@@ -308,18 +302,21 @@ fn validate_json_impl(input: &str) -> std::result::Result<(), String> {
 pub fn extract_path(json: &str, path: &str) -> Result<ToolOutput> {
     // Simple path extraction (supports dot notation)
     // e.g., "data.items.0.name"
-    
+
     // For now, return the path info
     Ok(ToolOutput::success(format!("Path: {}", path))
         .with_metadata("path", path.to_string())
-        .with_metadata("note", "Full JSONPath support requires serde_json".to_string()))
+        .with_metadata(
+            "note",
+            "Full JSONPath support requires serde_json".to_string(),
+        ))
 }
 
 /// Sort JSON keys alphabetically.
 pub fn sort_keys(input: &str) -> Result<ToolOutput> {
     // Basic implementation - would need full parser for proper sorting
     let formatted = format_json_impl(input, JsonIndent::Spaces2)?;
-    
+
     Ok(ToolOutput::success(formatted)
         .with_metadata("note", "Full key sorting requires serde_json".to_string()))
 }
@@ -327,21 +324,21 @@ pub fn sort_keys(input: &str) -> Result<ToolOutput> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_format() {
         let input = r#"{"a":1,"b":2}"#;
         let formatted = format_json_impl(input, JsonIndent::Spaces2).unwrap();
         assert!(formatted.contains('\n'));
     }
-    
+
     #[test]
     fn test_minify() {
         let input = r#"{ "a": 1, "b": 2 }"#;
         let minified = minify_json_impl(input).unwrap();
         assert!(!minified.contains(' '));
     }
-    
+
     #[test]
     fn test_validate() {
         assert!(validate_json_impl(r#"{"a": 1}"#).is_ok());

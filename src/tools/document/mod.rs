@@ -12,27 +12,27 @@
 //! 9. PDF Watermark - Add watermarks to PDFs
 //! 10. PDF Encryption - Password protect PDFs
 
+pub mod doc_convert;
+pub mod html_to_pdf;
+pub mod markdown;
+pub mod pdf_compress;
+pub mod pdf_encrypt;
 pub mod pdf_merge;
 pub mod pdf_split;
-pub mod pdf_compress;
 pub mod pdf_to_image;
-pub mod markdown;
-pub mod html_to_pdf;
-pub mod doc_convert;
-pub mod text_extract;
 pub mod pdf_watermark;
-pub mod pdf_encrypt;
+pub mod text_extract;
 
+pub use doc_convert::*;
+pub use html_to_pdf::*;
+pub use markdown::*;
+pub use pdf_compress::*;
+pub use pdf_encrypt::*;
 pub use pdf_merge::*;
 pub use pdf_split::*;
-pub use pdf_compress::*;
 pub use pdf_to_image::*;
-pub use markdown::*;
-pub use html_to_pdf::*;
-pub use doc_convert::*;
-pub use text_extract::*;
 pub use pdf_watermark::*;
-pub use pdf_encrypt::*;
+pub use text_extract::*;
 
 use crate::error::Result;
 use std::path::Path;
@@ -45,59 +45,92 @@ impl DocumentTools {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Merge multiple PDFs.
     pub fn merge_pdf<P: AsRef<Path>>(&self, inputs: &[P], output: P) -> Result<super::ToolOutput> {
         pdf_merge::merge_pdfs(inputs, output)
     }
-    
+
     /// Split PDF into pages.
     pub fn split_pdf<P: AsRef<Path>>(&self, input: P, output_dir: P) -> Result<super::ToolOutput> {
         pdf_split::split_pdf(input, output_dir)
     }
-    
+
     /// Compress PDF.
-    pub fn compress_pdf<P: AsRef<Path>>(&self, input: P, output: P, quality: CompressionQuality) -> Result<super::ToolOutput> {
+    pub fn compress_pdf<P: AsRef<Path>>(
+        &self,
+        input: P,
+        output: P,
+        quality: CompressionQuality,
+    ) -> Result<super::ToolOutput> {
         pdf_compress::compress_pdf(input, output, quality)
     }
-    
+
     /// Convert PDF to images.
-    pub fn pdf_to_images<P: AsRef<Path>>(&self, input: P, output_dir: P) -> Result<super::ToolOutput> {
+    pub fn pdf_to_images<P: AsRef<Path>>(
+        &self,
+        input: P,
+        output_dir: P,
+    ) -> Result<super::ToolOutput> {
         pdf_to_image::pdf_to_images(input, output_dir)
     }
-    
+
     /// Convert markdown to HTML.
-    pub fn markdown_to_html<P: AsRef<Path>>(&self, input: P, output: P) -> Result<super::ToolOutput> {
+    pub fn markdown_to_html<P: AsRef<Path>>(
+        &self,
+        input: P,
+        output: P,
+    ) -> Result<super::ToolOutput> {
         markdown::markdown_to_html(input, output)
     }
-    
+
     /// Convert HTML to PDF.
     pub fn html_to_pdf<P: AsRef<Path>>(&self, input: P, output: P) -> Result<super::ToolOutput> {
         html_to_pdf::html_to_pdf(input, output)
     }
-    
+
     /// Convert document to another format.
-    pub fn convert_document<P: AsRef<Path>>(&self, input: P, output: P, format: doc_convert::DocFormat) -> Result<super::ToolOutput> {
+    pub fn convert_document<P: AsRef<Path>>(
+        &self,
+        input: P,
+        output: P,
+        format: doc_convert::DocFormat,
+    ) -> Result<super::ToolOutput> {
         doc_convert::convert_document(input, output, format)
     }
-    
+
     /// Extract text from document.
     pub fn extract_text<P: AsRef<Path>>(&self, input: P) -> Result<super::ToolOutput> {
         text_extract::extract(input)
     }
-    
+
     /// Add watermark to PDF.
-    pub fn watermark_pdf<P: AsRef<Path>>(&self, input: P, output: P, text: &str) -> Result<super::ToolOutput> {
+    pub fn watermark_pdf<P: AsRef<Path>>(
+        &self,
+        input: P,
+        output: P,
+        text: &str,
+    ) -> Result<super::ToolOutput> {
         pdf_watermark::text_watermark(input, output, text)
     }
-    
+
     /// Encrypt PDF with password.
-    pub fn encrypt_pdf<P: AsRef<Path>>(&self, input: P, output: P, password: &str) -> Result<super::ToolOutput> {
+    pub fn encrypt_pdf<P: AsRef<Path>>(
+        &self,
+        input: P,
+        output: P,
+        password: &str,
+    ) -> Result<super::ToolOutput> {
         pdf_encrypt::encrypt(input, output, password)
     }
-    
+
     /// Decrypt PDF with password.
-    pub fn decrypt_pdf<P: AsRef<Path>>(&self, input: P, output: P, password: &str) -> Result<super::ToolOutput> {
+    pub fn decrypt_pdf<P: AsRef<Path>>(
+        &self,
+        input: P,
+        output: P,
+        password: &str,
+    ) -> Result<super::ToolOutput> {
         pdf_encrypt::decrypt(input, output, password)
     }
 }

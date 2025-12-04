@@ -1,7 +1,7 @@
 //! Wikimedia Commons provider implementation.
 //!
 //! [Wikimedia Commons API](https://commons.wikimedia.org/w/api.php)
-//! 
+//!
 //! Provides access to 92+ million free-use media files.
 
 use async_trait::async_trait;
@@ -13,9 +13,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Wikimedia Commons provider for free-use media.
 /// Access to 92M+ images, videos, and audio files.
@@ -44,13 +42,21 @@ impl WikimediaCommonsProvider {
     /// Determine media type from file extension
     fn media_type_from_title(title: &str) -> MediaType {
         let lower = title.to_lowercase();
-        if lower.ends_with(".jpg") || lower.ends_with(".jpeg") || lower.ends_with(".png") 
-            || lower.ends_with(".gif") || lower.ends_with(".svg") || lower.ends_with(".webp") {
+        if lower.ends_with(".jpg")
+            || lower.ends_with(".jpeg")
+            || lower.ends_with(".png")
+            || lower.ends_with(".gif")
+            || lower.ends_with(".svg")
+            || lower.ends_with(".webp")
+        {
             MediaType::Image
         } else if lower.ends_with(".mp4") || lower.ends_with(".webm") || lower.ends_with(".ogv") {
             MediaType::Video
-        } else if lower.ends_with(".mp3") || lower.ends_with(".ogg") || lower.ends_with(".wav") 
-            || lower.ends_with(".flac") {
+        } else if lower.ends_with(".mp3")
+            || lower.ends_with(".ogg")
+            || lower.ends_with(".wav")
+            || lower.ends_with(".flac")
+        {
             MediaType::Audio
         } else {
             MediaType::Image
@@ -101,7 +107,7 @@ impl Provider for WikimediaCommonsProvider {
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let limit_str = query.count.min(50).to_string();
         let offset_str = ((query.page - 1) * query.count).to_string();
-        
+
         let params = [
             ("action", "query"),
             ("format", "json"),
@@ -123,13 +129,13 @@ impl Provider for WikimediaCommonsProvider {
         let api_response: WikimediaSearchResponse = response.json_or_error().await?;
 
         let pages = api_response.query.map(|q| q.pages).unwrap_or_default();
-        
+
         let assets: Vec<MediaAsset> = pages
             .into_values()
             .filter_map(|page| {
                 let info = page.imageinfo?.into_iter().next()?;
                 let media_type = Self::media_type_from_title(&page.title);
-                
+
                 // Filter by media type if specified
                 if let Some(requested_type) = query.media_type {
                     if media_type != requested_type {
@@ -137,7 +143,8 @@ impl Provider for WikimediaCommonsProvider {
                     }
                 }
 
-                let license = info.extmetadata
+                let license = info
+                    .extmetadata
                     .as_ref()
                     .and_then(|m| m.license_short_name.as_ref())
                     .map(|l| {
@@ -261,7 +268,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = WikimediaCommonsProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "wikimedia");
         assert_eq!(provider.display_name(), "Wikimedia Commons");
         assert!(!provider.requires_api_key());
@@ -270,14 +277,29 @@ mod tests {
 
     #[test]
     fn test_media_type_detection() {
-        assert_eq!(WikimediaCommonsProvider::media_type_from_title("File:Test.jpg"), MediaType::Image);
-        assert_eq!(WikimediaCommonsProvider::media_type_from_title("File:Test.mp4"), MediaType::Video);
-        assert_eq!(WikimediaCommonsProvider::media_type_from_title("File:Test.mp3"), MediaType::Audio);
+        assert_eq!(
+            WikimediaCommonsProvider::media_type_from_title("File:Test.jpg"),
+            MediaType::Image
+        );
+        assert_eq!(
+            WikimediaCommonsProvider::media_type_from_title("File:Test.mp4"),
+            MediaType::Video
+        );
+        assert_eq!(
+            WikimediaCommonsProvider::media_type_from_title("File:Test.mp3"),
+            MediaType::Audio
+        );
     }
 
     #[test]
     fn test_title_cleaning() {
-        assert_eq!(WikimediaCommonsProvider::clean_title("File:Test_Image.jpg"), "Test Image");
-        assert_eq!(WikimediaCommonsProvider::clean_title("File:My_Photo.png"), "My Photo");
+        assert_eq!(
+            WikimediaCommonsProvider::clean_title("File:Test_Image.jpg"),
+            "Test Image"
+        );
+        assert_eq!(
+            WikimediaCommonsProvider::clean_title("File:My_Photo.png"),
+            "My Photo"
+        );
     }
 }

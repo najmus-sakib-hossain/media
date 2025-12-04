@@ -1,7 +1,7 @@
 //! Library of Congress provider implementation.
 //!
 //! [Library of Congress API](https://loc.gov/apis)
-//! 
+//!
 //! Provides access to 3+ million public domain images from the Library of Congress.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Library of Congress provider for public domain historical media.
 /// Access to 3M+ public domain images, documents, and historical materials.
@@ -52,7 +50,12 @@ impl Provider for LibraryOfCongressProvider {
     }
 
     fn supported_media_types(&self) -> &[MediaType] {
-        &[MediaType::Image, MediaType::Document, MediaType::Audio, MediaType::Video]
+        &[
+            MediaType::Image,
+            MediaType::Document,
+            MediaType::Audio,
+            MediaType::Video,
+        ]
     }
 
     fn requires_api_key(&self) -> bool {
@@ -73,7 +76,7 @@ impl Provider for LibraryOfCongressProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/search/", self.base_url());
-        
+
         let format_filter = match query.media_type {
             Some(MediaType::Image) => "photo,print,drawing",
             Some(MediaType::Audio) => "audio",
@@ -84,7 +87,7 @@ impl Provider for LibraryOfCongressProvider {
 
         let count_str = query.count.min(100).to_string();
         let page_str = query.page.to_string();
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("fo", "json"),
@@ -93,10 +96,7 @@ impl Provider for LibraryOfCongressProvider {
             ("sp", page_str.as_str()),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: LocSearchResponse = response.json_or_error().await?;
 
@@ -105,18 +105,23 @@ impl Provider for LibraryOfCongressProvider {
             .into_iter()
             .filter_map(|item| {
                 let image_url = item.image_url.first().cloned()?;
-                
-                Some(MediaAsset::builder()
-                    .id(item.id.unwrap_or_default())
-                    .provider("loc")
-                    .media_type(MediaType::Image)
-                    .title(item.title.unwrap_or_else(|| "Library of Congress Item".to_string()))
-                    .download_url(image_url.clone())
-                    .preview_url(image_url)
-                    .source_url(item.url.unwrap_or_default())
-                    .author(item.contributor.unwrap_or_default().join(", "))
-                    .license(License::PublicDomain)
-                    .build())
+
+                Some(
+                    MediaAsset::builder()
+                        .id(item.id.unwrap_or_default())
+                        .provider("loc")
+                        .media_type(MediaType::Image)
+                        .title(
+                            item.title
+                                .unwrap_or_else(|| "Library of Congress Item".to_string()),
+                        )
+                        .download_url(image_url.clone())
+                        .preview_url(image_url)
+                        .source_url(item.url.unwrap_or_default())
+                        .author(item.contributor.unwrap_or_default().join(", "))
+                        .license(License::PublicDomain)
+                        .build(),
+                )
             })
             .collect();
 

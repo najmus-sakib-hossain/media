@@ -1,7 +1,7 @@
 //! Cleveland Museum of Art provider implementation.
 //!
 //! [Cleveland Museum of Art Open Access API](https://openaccess-api.clevelandart.org)
-//! 
+//!
 //! Provides access to 61,000+ CC0 licensed artworks.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Cleveland Museum of Art provider for CC0 artworks.
 /// Access to 61K+ CC0 licensed artworks spanning 6,000 years of human history.
@@ -73,10 +71,10 @@ impl Provider for ClevelandMuseumProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = self.base_url().to_string();
-        
+
         let limit = query.count.min(100).to_string();
         let skip = ((query.page - 1) * query.count).to_string();
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("limit", limit.as_str()),
@@ -84,10 +82,7 @@ impl Provider for ClevelandMuseumProvider {
             ("has_image", "1"),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: ClevelandResponse = response.json_or_error().await?;
 
@@ -97,19 +92,34 @@ impl Provider for ClevelandMuseumProvider {
             .filter_map(|artwork| {
                 let images = artwork.images?;
                 let web_image = images.web?;
-                
-                Some(MediaAsset::builder()
-                    .id(artwork.id.to_string())
-                    .provider("cleveland")
-                    .media_type(MediaType::Image)
-                    .title(artwork.title.unwrap_or_else(|| "Untitled".to_string()))
-                    .download_url(web_image.url.clone())
-                    .preview_url(web_image.url)
-                    .source_url(artwork.url.unwrap_or_default())
-                    .author(artwork.creators.map(|c| c.into_iter().map(|cr| cr.description).collect::<Vec<_>>().join(", ")).unwrap_or_default())
-                    .license(License::Cc0)
-                    .dimensions(web_image.width.unwrap_or(0) as u32, web_image.height.unwrap_or(0) as u32)
-                    .build())
+
+                Some(
+                    MediaAsset::builder()
+                        .id(artwork.id.to_string())
+                        .provider("cleveland")
+                        .media_type(MediaType::Image)
+                        .title(artwork.title.unwrap_or_else(|| "Untitled".to_string()))
+                        .download_url(web_image.url.clone())
+                        .preview_url(web_image.url)
+                        .source_url(artwork.url.unwrap_or_default())
+                        .author(
+                            artwork
+                                .creators
+                                .map(|c| {
+                                    c.into_iter()
+                                        .map(|cr| cr.description)
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                })
+                                .unwrap_or_default(),
+                        )
+                        .license(License::Cc0)
+                        .dimensions(
+                            web_image.width.unwrap_or(0) as u32,
+                            web_image.height.unwrap_or(0) as u32,
+                        )
+                        .build(),
+                )
             })
             .collect();
 

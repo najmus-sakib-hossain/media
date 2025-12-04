@@ -7,8 +7,8 @@
 //! - License information
 //! - Rate limiting recommendations
 
-mod targets;
 mod registry;
+mod targets;
 
-pub use targets::{ScrapingTarget, ScrapingCategory, ScrapingMethod};
-pub use registry::{ScrapingRegistry, SCRAPING_TARGETS};
+pub use registry::{SCRAPING_TARGETS, ScrapingRegistry};
+pub use targets::{ScrapingCategory, ScrapingMethod, ScrapingTarget};

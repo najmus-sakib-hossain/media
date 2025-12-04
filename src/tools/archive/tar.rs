@@ -34,7 +34,7 @@ impl TarCompression {
             TarCompression::Zstd => Some("--zstd"),
         }
     }
-    
+
     /// Get file extension.
     pub fn extension(&self) -> &'static str {
         match self {
@@ -45,7 +45,7 @@ impl TarCompression {
             TarCompression::Zstd => "tar.zst",
         }
     }
-    
+
     /// Detect from file extension.
     pub fn from_extension(path: &Path) -> Self {
         let name = path.to_string_lossy().to_lowercase();
@@ -91,39 +91,34 @@ pub fn create_tar_with_compression<P: AsRef<Path>>(
     compression: TarCompression,
 ) -> Result<ToolOutput> {
     let output_path = output.as_ref();
-    
+
     let mut cmd = Command::new("tar");
     cmd.arg("-c");
-    
+
     if let Some(flag) = compression.tar_flag() {
         cmd.arg(flag);
     }
-    
+
     cmd.arg("-f").arg(output_path);
-    
+
     for input in inputs {
         cmd.arg(input.as_ref());
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run tar: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
-            message: format!(
-                "tar failed: {}",
-                String::from_utf8_lossy(&result.stderr)
-            ),
+            message: format!("tar failed: {}", String::from_utf8_lossy(&result.stderr)),
             source: None,
         });
     }
-    
-    let size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
         format!("Created TAR archive ({} bytes)", size),
         output_path,
@@ -145,7 +140,7 @@ pub fn create_tar_with_compression<P: AsRef<Path>>(
 pub fn extract_tar<P: AsRef<Path>>(input: P, output_dir: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -153,33 +148,30 @@ pub fn extract_tar<P: AsRef<Path>>(input: P, output_dir: P) -> Result<ToolOutput
             source: None,
         });
     }
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create directory: {}", e),
         source: None,
     })?;
-    
+
     // Auto-detect compression
     let compression = TarCompression::from_extension(input_path);
-    
+
     let mut cmd = Command::new("tar");
     cmd.arg("-x");
-    
+
     if let Some(flag) = compression.tar_flag() {
         cmd.arg(flag);
     }
-    
-    cmd.arg("-f")
-        .arg(input_path)
-        .arg("-C")
-        .arg(output_dir);
-    
+
+    cmd.arg("-f").arg(input_path).arg("-C").arg(output_dir);
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run tar: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -189,7 +181,7 @@ pub fn extract_tar<P: AsRef<Path>>(input: P, output_dir: P) -> Result<ToolOutput
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Extracted TAR archive",
         output_dir,
@@ -199,7 +191,7 @@ pub fn extract_tar<P: AsRef<Path>>(input: P, output_dir: P) -> Result<ToolOutput
 /// List TAR archive contents.
 pub fn list_tar<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -207,41 +199,43 @@ pub fn list_tar<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
             source: None,
         });
     }
-    
+
     let compression = TarCompression::from_extension(input_path);
-    
+
     let mut cmd = Command::new("tar");
     cmd.arg("-t");
-    
+
     if let Some(flag) = compression.tar_flag() {
         cmd.arg(flag);
     }
-    
+
     cmd.arg("-f").arg(input_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run tar: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "Failed to list archive".to_string(),
             source: None,
         });
     }
-    
+
     let listing = String::from_utf8_lossy(&result.stdout);
     let file_count = listing.lines().count();
-    
-    Ok(ToolOutput::success(listing.to_string())
-        .with_metadata("file_count", file_count.to_string()))
+
+    Ok(
+        ToolOutput::success(listing.to_string())
+            .with_metadata("file_count", file_count.to_string()),
+    )
 }
 
 /// Append to TAR archive (uncompressed only).
 pub fn append_to_tar<P: AsRef<Path>>(archive: P, files: &[P]) -> Result<ToolOutput> {
     let archive_path = archive.as_ref();
-    
+
     if !archive_path.exists() {
         return Err(DxError::FileIo {
             path: archive_path.to_path_buf(),
@@ -249,28 +243,26 @@ pub fn append_to_tar<P: AsRef<Path>>(archive: P, files: &[P]) -> Result<ToolOutp
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("tar");
-    cmd.arg("-r")
-        .arg("-f")
-        .arg(archive_path);
-    
+    cmd.arg("-r").arg("-f").arg(archive_path);
+
     for file in files {
         cmd.arg(file.as_ref());
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run tar: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "Failed to append to archive".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Added {} files to archive", files.len()),
         archive_path,
@@ -278,10 +270,14 @@ pub fn append_to_tar<P: AsRef<Path>>(archive: P, files: &[P]) -> Result<ToolOutp
 }
 
 /// Extract specific files from TAR.
-pub fn extract_files<P: AsRef<Path>>(archive: P, files: &[&str], output_dir: P) -> Result<ToolOutput> {
+pub fn extract_files<P: AsRef<Path>>(
+    archive: P,
+    files: &[&str],
+    output_dir: P,
+) -> Result<ToolOutput> {
     let archive_path = archive.as_ref();
     let output_dir = output_dir.as_ref();
-    
+
     if !archive_path.exists() {
         return Err(DxError::FileIo {
             path: archive_path.to_path_buf(),
@@ -289,43 +285,40 @@ pub fn extract_files<P: AsRef<Path>>(archive: P, files: &[&str], output_dir: P) 
             source: None,
         });
     }
-    
+
     std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
         path: output_dir.to_path_buf(),
         message: format!("Failed to create directory: {}", e),
         source: None,
     })?;
-    
+
     let compression = TarCompression::from_extension(archive_path);
-    
+
     let mut cmd = Command::new("tar");
     cmd.arg("-x");
-    
+
     if let Some(flag) = compression.tar_flag() {
         cmd.arg(flag);
     }
-    
-    cmd.arg("-f")
-        .arg(archive_path)
-        .arg("-C")
-        .arg(output_dir);
-    
+
+    cmd.arg("-f").arg(archive_path).arg("-C").arg(output_dir);
+
     for file in files {
         cmd.arg(file);
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run tar: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: "Failed to extract files".to_string(),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Extracted {} files", files.len()),
         output_dir,
@@ -336,7 +329,7 @@ pub fn extract_files<P: AsRef<Path>>(archive: P, files: &[&str], output_dir: P) 
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    
+
     #[test]
     fn test_compression_detection() {
         assert!(matches!(

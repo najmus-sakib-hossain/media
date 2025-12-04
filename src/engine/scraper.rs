@@ -10,7 +10,7 @@ use url::Url;
 
 use crate::error::{DxError, Result};
 use crate::http::HttpClient;
-use crate::types::{MediaAsset, MediaType, License};
+use crate::types::{License, MediaAsset, MediaType};
 
 /// Web scraper for extracting media from websites.
 #[derive(Debug, Clone)]
@@ -90,7 +90,8 @@ impl Scraper {
         };
 
         let mut visited: HashSet<String> = HashSet::new();
-        self.scrape_page(&base_url, options, &mut result, &mut visited, 0).await?;
+        self.scrape_page(&base_url, options, &mut result, &mut visited, 0)
+            .await?;
 
         Ok(result)
     }
@@ -105,7 +106,7 @@ impl Scraper {
         depth: usize,
     ) -> Result<()> {
         let url_str = url.to_string();
-        
+
         // Skip if already visited or too deep
         if visited.contains(&url_str) || depth > options.max_depth {
             return Ok(());
@@ -116,7 +117,9 @@ impl Scraper {
         let response = match self.client.get_raw(&url_str).await {
             Ok(r) => r,
             Err(e) => {
-                result.errors.push(format!("Failed to fetch {url_str}: {e}"));
+                result
+                    .errors
+                    .push(format!("Failed to fetch {url_str}: {e}"));
                 return Ok(());
             }
         };
@@ -169,17 +172,24 @@ impl Scraper {
     }
 
     /// Extract image URLs from HTML.
-    fn extract_images(&self, document: &Html, base_url: &Url, options: &ScrapeOptions, result: &mut ScrapeResult) {
+    fn extract_images(
+        &self,
+        document: &Html,
+        base_url: &Url,
+        options: &ScrapeOptions,
+        result: &mut ScrapeResult,
+    ) {
         // Select img tags
         let img_selector = Selector::parse("img[src]").unwrap();
-        
+
         for (idx, element) in document.select(&img_selector).enumerate() {
             if result.assets.len() >= options.max_assets {
                 break;
             }
 
             if let Some(src) = element.value().attr("src") {
-                if let Some(asset) = self.create_image_asset(src, base_url, &element, idx, options) {
+                if let Some(asset) = self.create_image_asset(src, base_url, &element, idx, options)
+                {
                     result.assets.push(asset);
                 }
             }
@@ -190,7 +200,9 @@ impl Scraper {
                     if result.assets.len() >= options.max_assets {
                         break;
                     }
-                    if let Some(asset) = self.create_image_asset(&src, base_url, &element, idx, options) {
+                    if let Some(asset) =
+                        self.create_image_asset(&src, base_url, &element, idx, options)
+                    {
                         result.assets.push(asset);
                     }
                 }
@@ -209,7 +221,13 @@ impl Scraper {
             if let Some(style) = element.value().attr("style") {
                 for cap in url_regex.captures_iter(style) {
                     if let Some(url_match) = cap.get(1) {
-                        if let Some(asset) = self.create_image_asset(url_match.as_str(), base_url, &element, idx + 1000, options) {
+                        if let Some(asset) = self.create_image_asset(
+                            url_match.as_str(),
+                            base_url,
+                            &element,
+                            idx + 1000,
+                            options,
+                        ) {
                             result.assets.push(asset);
                         }
                     }
@@ -218,13 +236,16 @@ impl Scraper {
         }
 
         // Look for og:image and other meta images
-        let meta_selector = Selector::parse("meta[property='og:image'], meta[name='twitter:image']").unwrap();
+        let meta_selector =
+            Selector::parse("meta[property='og:image'], meta[name='twitter:image']").unwrap();
         for (idx, element) in document.select(&meta_selector).enumerate() {
             if result.assets.len() >= options.max_assets {
                 break;
             }
             if let Some(content) = element.value().attr("content") {
-                if let Some(asset) = self.create_image_asset(content, base_url, &element, idx + 2000, options) {
+                if let Some(asset) =
+                    self.create_image_asset(content, base_url, &element, idx + 2000, options)
+                {
                     result.assets.push(asset);
                 }
             }
@@ -232,7 +253,13 @@ impl Scraper {
     }
 
     /// Extract video URLs from HTML.
-    fn extract_videos(&self, document: &Html, base_url: &Url, options: &ScrapeOptions, result: &mut ScrapeResult) {
+    fn extract_videos(
+        &self,
+        document: &Html,
+        base_url: &Url,
+        options: &ScrapeOptions,
+        result: &mut ScrapeResult,
+    ) {
         // Select video and source tags
         let video_selector = Selector::parse("video[src], video source[src]").unwrap();
 
@@ -250,7 +277,13 @@ impl Scraper {
     }
 
     /// Extract audio URLs from HTML.
-    fn extract_audio(&self, document: &Html, base_url: &Url, options: &ScrapeOptions, result: &mut ScrapeResult) {
+    fn extract_audio(
+        &self,
+        document: &Html,
+        base_url: &Url,
+        options: &ScrapeOptions,
+        result: &mut ScrapeResult,
+    ) {
         let audio_selector = Selector::parse("audio[src], audio source[src]").unwrap();
 
         for (idx, element) in document.select(&audio_selector).enumerate() {
@@ -309,16 +342,18 @@ impl Scraper {
         let width = element.value().attr("width").and_then(|w| w.parse().ok());
         let height = element.value().attr("height").and_then(|h| h.parse().ok());
 
-        Some(MediaAsset::builder()
-            .id(format!("scraped-{idx}"))
-            .provider("scraper")
-            .media_type(MediaType::Image)
-            .title(title)
-            .download_url(url_str.clone())
-            .source_url(base_url.to_string())
-            .license(License::Other("Unknown - Check source".to_string()))
-            .dimensions(width.unwrap_or(0), height.unwrap_or(0))
-            .build())
+        Some(
+            MediaAsset::builder()
+                .id(format!("scraped-{idx}"))
+                .provider("scraper")
+                .media_type(MediaType::Image)
+                .title(title)
+                .download_url(url_str.clone())
+                .source_url(base_url.to_string())
+                .license(License::Other("Unknown - Check source".to_string()))
+                .dimensions(width.unwrap_or(0), height.unwrap_or(0))
+                .build(),
+        )
     }
 
     /// Create a video asset from a URL.
@@ -343,15 +378,17 @@ impl Scraper {
             return None;
         }
 
-        Some(MediaAsset::builder()
-            .id(format!("scraped-video-{idx}"))
-            .provider("scraper")
-            .media_type(MediaType::Video)
-            .title(format!("Video {}", idx + 1))
-            .download_url(url_str.clone())
-            .source_url(base_url.to_string())
-            .license(License::Other("Unknown - Check source".to_string()))
-            .build())
+        Some(
+            MediaAsset::builder()
+                .id(format!("scraped-video-{idx}"))
+                .provider("scraper")
+                .media_type(MediaType::Video)
+                .title(format!("Video {}", idx + 1))
+                .download_url(url_str.clone())
+                .source_url(base_url.to_string())
+                .license(License::Other("Unknown - Check source".to_string()))
+                .build(),
+        )
     }
 
     /// Create an audio asset from a URL.
@@ -376,15 +413,17 @@ impl Scraper {
             return None;
         }
 
-        Some(MediaAsset::builder()
-            .id(format!("scraped-audio-{idx}"))
-            .provider("scraper")
-            .media_type(MediaType::Audio)
-            .title(format!("Audio {}", idx + 1))
-            .download_url(url_str.clone())
-            .source_url(base_url.to_string())
-            .license(License::Other("Unknown - Check source".to_string()))
-            .build())
+        Some(
+            MediaAsset::builder()
+                .id(format!("scraped-audio-{idx}"))
+                .provider("scraper")
+                .media_type(MediaType::Audio)
+                .title(format!("Audio {}", idx + 1))
+                .download_url(url_str.clone())
+                .source_url(base_url.to_string())
+                .license(License::Other("Unknown - Check source".to_string()))
+                .build(),
+        )
     }
 
     /// Extract links from HTML for recursive scraping.
@@ -410,9 +449,7 @@ impl Scraper {
     fn parse_srcset(&self, srcset: &str) -> Vec<String> {
         srcset
             .split(',')
-            .filter_map(|entry| {
-                entry.trim().split_whitespace().next().map(String::from)
-            })
+            .filter_map(|entry| entry.trim().split_whitespace().next().map(String::from))
             .collect()
     }
 
@@ -427,10 +464,8 @@ impl Scraper {
     /// Check if URL matches a glob-like pattern.
     fn matches_pattern(&self, url: &str, pattern: &str) -> bool {
         // Simple glob matching: * matches anything
-        let regex_pattern = pattern
-            .replace('.', r"\.")
-            .replace('*', ".*");
-        
+        let regex_pattern = pattern.replace('.', r"\.").replace('*', ".*");
+
         if let Ok(regex) = Regex::new(&regex_pattern) {
             regex.is_match(url)
         } else {
@@ -458,7 +493,7 @@ mod tests {
         let scraper = Scraper::default();
         let srcset = "image-300.jpg 300w, image-600.jpg 600w, image-1200.jpg 1200w";
         let urls = scraper.parse_srcset(srcset);
-        
+
         assert_eq!(urls.len(), 3);
         assert_eq!(urls[0], "image-300.jpg");
         assert_eq!(urls[1], "image-600.jpg");
@@ -468,16 +503,25 @@ mod tests {
     #[test]
     fn test_get_extension() {
         let scraper = Scraper::default();
-        
-        assert_eq!(scraper.get_extension("https://example.com/image.jpg"), Some("jpg".to_string()));
-        assert_eq!(scraper.get_extension("https://example.com/image.PNG"), Some("png".to_string()));
-        assert_eq!(scraper.get_extension("https://example.com/image.jpg?size=large"), Some("jpg".to_string()));
+
+        assert_eq!(
+            scraper.get_extension("https://example.com/image.jpg"),
+            Some("jpg".to_string())
+        );
+        assert_eq!(
+            scraper.get_extension("https://example.com/image.PNG"),
+            Some("png".to_string())
+        );
+        assert_eq!(
+            scraper.get_extension("https://example.com/image.jpg?size=large"),
+            Some("jpg".to_string())
+        );
     }
 
     #[test]
     fn test_matches_pattern() {
         let scraper = Scraper::default();
-        
+
         assert!(scraper.matches_pattern("https://example.com/image.jpg", "*.jpg"));
         assert!(scraper.matches_pattern("https://example.com/image.png", "*.png"));
         assert!(!scraper.matches_pattern("https://example.com/image.gif", "*.jpg"));

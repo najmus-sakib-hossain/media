@@ -51,32 +51,32 @@ impl GifOptions {
             ..Default::default()
         }
     }
-    
+
     /// Set frame rate.
     pub fn with_fps(mut self, fps: u32) -> Self {
         self.fps = fps.clamp(1, 60);
         self
     }
-    
+
     /// Set time range.
     pub fn with_range(mut self, start: f64, duration: f64) -> Self {
         self.start = Some(start);
         self.duration = Some(duration);
         self
     }
-    
+
     /// Disable high quality mode (faster, larger file).
     pub fn fast_mode(mut self) -> Self {
         self.high_quality = false;
         self
     }
-    
+
     /// Set number of colors (fewer = smaller file).
     pub fn with_colors(mut self, colors: u32) -> Self {
         self.colors = colors.clamp(2, 256);
         self
     }
-    
+
     /// Set loop count.
     pub fn with_loop(mut self, count: i32) -> Self {
         self.loop_count = count;
@@ -108,7 +108,7 @@ pub fn video_to_gif<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -116,7 +116,7 @@ pub fn video_to_gif<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     if options.high_quality {
         // Two-pass encoding for better quality
         create_gif_high_quality(input_path, output_path, &options)
@@ -135,34 +135,36 @@ fn create_gif_high_quality(
     // Create temporary palette file
     let temp_dir = std::env::temp_dir();
     let palette_path = temp_dir.join(format!("palette_{}.png", std::process::id()));
-    
+
     // Build filter string
     let filter = build_filter_string(options);
     let palette_filter = format!("{}palettegen=max_colors={}", filter, options.colors);
-    
+
     // Pass 1: Generate palette
     let mut cmd1 = Command::new("ffmpeg");
     cmd1.arg("-y");
-    
+
     if let Some(start) = options.start {
         cmd1.arg("-ss").arg(start.to_string());
     }
-    
+
     cmd1.arg("-i").arg(input);
-    
+
     if let Some(duration) = options.duration {
         cmd1.arg("-t").arg(duration.to_string());
     }
-    
-    cmd1.arg("-vf").arg(&palette_filter)
-        .arg("-update").arg("1")
+
+    cmd1.arg("-vf")
+        .arg(&palette_filter)
+        .arg("-update")
+        .arg("1")
         .arg(&palette_path);
-    
+
     let output1 = cmd1.output().map_err(|e| DxError::Config {
         message: format!("Failed to generate palette: {}", e),
         source: None,
     })?;
-    
+
     if !output1.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -172,40 +174,40 @@ fn create_gif_high_quality(
             source: None,
         });
     }
-    
+
     // Pass 2: Create GIF using palette
     let dither_method = if options.dither { "sierra2_4a" } else { "none" };
-    let gif_filter = format!(
-        "{}[x];[x][1:v]paletteuse=dither={}",
-        filter, dither_method
-    );
-    
+    let gif_filter = format!("{}[x];[x][1:v]paletteuse=dither={}", filter, dither_method);
+
     let mut cmd2 = Command::new("ffmpeg");
     cmd2.arg("-y");
-    
+
     if let Some(start) = options.start {
         cmd2.arg("-ss").arg(start.to_string());
     }
-    
+
     cmd2.arg("-i").arg(input);
-    
+
     if let Some(duration) = options.duration {
         cmd2.arg("-t").arg(duration.to_string());
     }
-    
-    cmd2.arg("-i").arg(&palette_path)
-        .arg("-lavfi").arg(&gif_filter)
-        .arg("-loop").arg(options.loop_count.to_string())
+
+    cmd2.arg("-i")
+        .arg(&palette_path)
+        .arg("-lavfi")
+        .arg(&gif_filter)
+        .arg("-loop")
+        .arg(options.loop_count.to_string())
         .arg(output);
-    
+
     let output2 = cmd2.output().map_err(|e| DxError::Config {
         message: format!("Failed to create GIF: {}", e),
         source: None,
     })?;
-    
+
     // Clean up palette
     let _ = std::fs::remove_file(&palette_path);
-    
+
     if !output2.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -215,11 +217,9 @@ fn create_gif_high_quality(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
         format!("Created high-quality GIF ({} bytes)", output_size),
         output,
@@ -229,39 +229,37 @@ fn create_gif_high_quality(
 }
 
 /// Create GIF with simple single-pass encoding.
-fn create_gif_simple(
-    input: &Path,
-    output: &Path,
-    options: &GifOptions,
-) -> Result<ToolOutput> {
+fn create_gif_simple(input: &Path, output: &Path, options: &GifOptions) -> Result<ToolOutput> {
     let filter = format!(
         "{}split[s0][s1];[s0]palettegen=max_colors={}[p];[s1][p]paletteuse",
         build_filter_string(options),
         options.colors
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y");
-    
+
     if let Some(start) = options.start {
         cmd.arg("-ss").arg(start.to_string());
     }
-    
+
     cmd.arg("-i").arg(input);
-    
+
     if let Some(duration) = options.duration {
         cmd.arg("-t").arg(duration.to_string());
     }
-    
-    cmd.arg("-vf").arg(&filter)
-        .arg("-loop").arg(options.loop_count.to_string())
+
+    cmd.arg("-vf")
+        .arg(&filter)
+        .arg("-loop")
+        .arg(options.loop_count.to_string())
         .arg(output);
-    
+
     let output_result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to create GIF: {}", e),
         source: None,
     })?;
-    
+
     if !output_result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -271,11 +269,9 @@ fn create_gif_simple(
             source: None,
         });
     }
-    
-    let output_size = std::fs::metadata(output)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let output_size = std::fs::metadata(output).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
         format!("Created GIF ({} bytes)", output_size),
         output,
@@ -286,8 +282,7 @@ fn create_gif_simple(
 fn build_filter_string(options: &GifOptions) -> String {
     format!(
         "fps={},scale={}:-1:flags=lanczos,",
-        options.fps,
-        options.width
+        options.fps, options.width
     )
 }
 
@@ -324,19 +319,19 @@ pub fn create_preview_gif<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_gif_options() {
         let opts = GifOptions::with_width(320)
             .with_fps(10)
             .with_range(5.0, 10.0);
-        
+
         assert_eq!(opts.width, 320);
         assert_eq!(opts.fps, 10);
         assert_eq!(opts.start, Some(5.0));
         assert_eq!(opts.duration, Some(10.0));
     }
-    
+
     #[test]
     fn test_filter_string() {
         let opts = GifOptions {

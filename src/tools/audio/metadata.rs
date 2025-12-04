@@ -67,7 +67,7 @@ impl AudioMetadata {
 /// ```
 pub fn read_metadata<P: AsRef<Path>>(input: P) -> Result<AudioMetadata> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -75,21 +75,23 @@ pub fn read_metadata<P: AsRef<Path>>(input: P) -> Result<AudioMetadata> {
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffprobe");
-    cmd.arg("-v").arg("quiet")
-        .arg("-print_format").arg("json")
+    cmd.arg("-v")
+        .arg("quiet")
+        .arg("-print_format")
+        .arg("json")
         .arg("-show_format")
         .arg("-show_streams")
         .arg(input_path);
-    
+
     let output = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run ffprobe: {}", e),
         source: None,
     })?;
-    
+
     let json_str = String::from_utf8_lossy(&output.stdout);
-    
+
     // Parse JSON response
     parse_ffprobe_json(&json_str)
 }
@@ -100,28 +102,49 @@ fn parse_ffprobe_json(json: &str) -> Result<AudioMetadata> {
         message: format!("Failed to parse metadata JSON: {}", e),
         source: None,
     })?;
-    
+
     let mut metadata = AudioMetadata::default();
-    
+
     // Parse format section
     if let Some(format) = parsed.get("format") {
         if let Some(tags) = format.get("tags") {
-            metadata.title = tags.get("title").or(tags.get("TITLE"))
-                .and_then(|v| v.as_str()).map(String::from);
-            metadata.artist = tags.get("artist").or(tags.get("ARTIST"))
-                .and_then(|v| v.as_str()).map(String::from);
-            metadata.album = tags.get("album").or(tags.get("ALBUM"))
-                .and_then(|v| v.as_str()).map(String::from);
-            metadata.album_artist = tags.get("album_artist").or(tags.get("ALBUMARTIST"))
-                .and_then(|v| v.as_str()).map(String::from);
-            metadata.genre = tags.get("genre").or(tags.get("GENRE"))
-                .and_then(|v| v.as_str()).map(String::from);
-            metadata.composer = tags.get("composer").or(tags.get("COMPOSER"))
-                .and_then(|v| v.as_str()).map(String::from);
-            
+            metadata.title = tags
+                .get("title")
+                .or(tags.get("TITLE"))
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            metadata.artist = tags
+                .get("artist")
+                .or(tags.get("ARTIST"))
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            metadata.album = tags
+                .get("album")
+                .or(tags.get("ALBUM"))
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            metadata.album_artist = tags
+                .get("album_artist")
+                .or(tags.get("ALBUMARTIST"))
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            metadata.genre = tags
+                .get("genre")
+                .or(tags.get("GENRE"))
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            metadata.composer = tags
+                .get("composer")
+                .or(tags.get("COMPOSER"))
+                .and_then(|v| v.as_str())
+                .map(String::from);
+
             // Parse track number
-            if let Some(track_str) = tags.get("track").or(tags.get("TRACK"))
-                .and_then(|v| v.as_str()) {
+            if let Some(track_str) = tags
+                .get("track")
+                .or(tags.get("TRACK"))
+                .and_then(|v| v.as_str())
+            {
                 if let Some(num) = track_str.split('/').next() {
                     metadata.track = num.parse().ok();
                 }
@@ -129,53 +152,65 @@ fn parse_ffprobe_json(json: &str) -> Result<AudioMetadata> {
                     metadata.total_tracks = total.parse().ok();
                 }
             }
-            
+
             // Parse year
-            metadata.year = tags.get("date").or(tags.get("DATE")).or(tags.get("year"))
+            metadata.year = tags
+                .get("date")
+                .or(tags.get("DATE"))
+                .or(tags.get("year"))
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.chars().take(4).collect::<String>().parse().ok());
         }
-        
+
         // Parse format info
-        metadata.duration = format.get("duration")
+        metadata.duration = format
+            .get("duration")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse().ok());
-        
-        metadata.bitrate = format.get("bit_rate")
+
+        metadata.bitrate = format
+            .get("bit_rate")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse::<u32>().ok())
             .map(|b| b / 1000);
     }
-    
+
     // Parse stream info (audio)
     if let Some(streams) = parsed.get("streams").and_then(|s| s.as_array()) {
         for stream in streams {
             if stream.get("codec_type").and_then(|v| v.as_str()) == Some("audio") {
-                metadata.sample_rate = stream.get("sample_rate")
+                metadata.sample_rate = stream
+                    .get("sample_rate")
                     .and_then(|v| v.as_str())
                     .and_then(|s| s.parse().ok());
-                
-                metadata.channels = stream.get("channels")
+
+                metadata.channels = stream
+                    .get("channels")
                     .and_then(|v| v.as_u64())
                     .map(|c| c as u8);
-                
-                metadata.codec = stream.get("codec_name")
+
+                metadata.codec = stream
+                    .get("codec_name")
                     .and_then(|v| v.as_str())
                     .map(String::from);
-                
+
                 break;
             }
         }
     }
-    
+
     Ok(metadata)
 }
 
 /// Write metadata to audio file.
-pub fn write_metadata<P: AsRef<Path>>(input: P, output: P, metadata: &AudioMetadata) -> Result<ToolOutput> {
+pub fn write_metadata<P: AsRef<Path>>(
+    input: P,
+    output: P,
+    metadata: &AudioMetadata,
+) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -183,11 +218,10 @@ pub fn write_metadata<P: AsRef<Path>>(input: P, output: P, metadata: &AudioMetad
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffmpeg");
-    cmd.arg("-y")
-        .arg("-i").arg(input_path);
-    
+    cmd.arg("-y").arg("-i").arg(input_path);
+
     // Add metadata tags
     if let Some(ref title) = metadata.title {
         cmd.arg("-metadata").arg(format!("title={}", title));
@@ -199,7 +233,8 @@ pub fn write_metadata<P: AsRef<Path>>(input: P, output: P, metadata: &AudioMetad
         cmd.arg("-metadata").arg(format!("album={}", album));
     }
     if let Some(ref album_artist) = metadata.album_artist {
-        cmd.arg("-metadata").arg(format!("album_artist={}", album_artist));
+        cmd.arg("-metadata")
+            .arg(format!("album_artist={}", album_artist));
     }
     if let Some(track) = metadata.track {
         let track_str = if let Some(total) = metadata.total_tracks {
@@ -218,20 +253,19 @@ pub fn write_metadata<P: AsRef<Path>>(input: P, output: P, metadata: &AudioMetad
     if let Some(ref composer) = metadata.composer {
         cmd.arg("-metadata").arg(format!("composer={}", composer));
     }
-    
+
     // Add extra tags
     for (key, value) in &metadata.extra {
         cmd.arg("-metadata").arg(format!("{}={}", key, value));
     }
-    
-    cmd.arg("-c").arg("copy")
-        .arg(output_path);
-    
+
+    cmd.arg("-c").arg("copy").arg(output_path);
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -241,7 +275,7 @@ pub fn write_metadata<P: AsRef<Path>>(input: P, output: P, metadata: &AudioMetad
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Updated audio metadata",
         output_path,
@@ -252,19 +286,22 @@ pub fn write_metadata<P: AsRef<Path>>(input: P, output: P, metadata: &AudioMetad
 pub fn strip_metadata<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-map_metadata").arg("-1")
-        .arg("-c").arg("copy")
+        .arg("-i")
+        .arg(input_path)
+        .arg("-map_metadata")
+        .arg("-1")
+        .arg("-c")
+        .arg("copy")
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -274,7 +311,7 @@ pub fn strip_metadata<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput>
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Stripped all metadata",
         output_path,
@@ -292,7 +329,7 @@ pub fn add_cover_art<P: AsRef<Path>>(input: P, cover: P, output: P) -> Result<To
     let input_path = input.as_ref();
     let cover_path = cover.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -300,7 +337,7 @@ pub fn add_cover_art<P: AsRef<Path>>(input: P, cover: P, output: P) -> Result<To
             source: None,
         });
     }
-    
+
     if !cover_path.exists() {
         return Err(DxError::FileIo {
             path: cover_path.to_path_buf(),
@@ -308,25 +345,34 @@ pub fn add_cover_art<P: AsRef<Path>>(input: P, cover: P, output: P) -> Result<To
             source: None,
         });
     }
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-i").arg(cover_path)
-        .arg("-map").arg("0:a")
-        .arg("-map").arg("1:v")
-        .arg("-c:a").arg("copy")
-        .arg("-c:v").arg("mjpeg")
-        .arg("-metadata:s:v").arg("title=Album cover")
-        .arg("-metadata:s:v").arg("comment=Cover (front)")
-        .arg("-disposition:v").arg("attached_pic")
+        .arg("-i")
+        .arg(input_path)
+        .arg("-i")
+        .arg(cover_path)
+        .arg("-map")
+        .arg("0:a")
+        .arg("-map")
+        .arg("1:v")
+        .arg("-c:a")
+        .arg("copy")
+        .arg("-c:v")
+        .arg("mjpeg")
+        .arg("-metadata:s:v")
+        .arg("title=Album cover")
+        .arg("-metadata:s:v")
+        .arg("comment=Cover (front)")
+        .arg("-disposition:v")
+        .arg("attached_pic")
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -336,7 +382,7 @@ pub fn add_cover_art<P: AsRef<Path>>(input: P, cover: P, output: P) -> Result<To
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Added cover art",
         output_path,
@@ -347,19 +393,21 @@ pub fn add_cover_art<P: AsRef<Path>>(input: P, cover: P, output: P) -> Result<To
 pub fn extract_cover_art<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-an")  // No audio
-        .arg("-c:v").arg("copy")
+        .arg("-i")
+        .arg(input_path)
+        .arg("-an") // No audio
+        .arg("-c:v")
+        .arg("copy")
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -369,7 +417,7 @@ pub fn extract_cover_art<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutp
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Extracted cover art",
         output_path,
@@ -379,7 +427,7 @@ pub fn extract_cover_art<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutp
 /// Format metadata as displayable string.
 pub fn format_metadata(metadata: &AudioMetadata) -> String {
     let mut lines = Vec::new();
-    
+
     if let Some(ref title) = metadata.title {
         lines.push(format!("Title: {}", title));
     }
@@ -414,21 +462,21 @@ pub fn format_metadata(metadata: &AudioMetadata) -> String {
     if let Some(sample_rate) = metadata.sample_rate {
         lines.push(format!("Sample Rate: {} Hz", sample_rate));
     }
-    
+
     lines.join("\n")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_metadata_format() {
         let mut metadata = AudioMetadata::default();
         metadata.title = Some("Test Song".to_string());
         metadata.artist = Some("Test Artist".to_string());
         metadata.duration = Some(180.0);
-        
+
         let formatted = format_metadata(&metadata);
         assert!(formatted.contains("Test Song"));
         assert!(formatted.contains("3:00"));

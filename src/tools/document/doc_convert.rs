@@ -42,7 +42,7 @@ impl DocFormat {
             DocFormat::Epub => "epub",
         }
     }
-    
+
     /// LibreOffice filter name.
     pub fn libreoffice_filter(&self) -> Option<&'static str> {
         match self {
@@ -56,7 +56,7 @@ impl DocFormat {
             DocFormat::Epub => Some("EPUB"),
         }
     }
-    
+
     /// Detect format from extension.
     pub fn from_extension(ext: &str) -> Option<Self> {
         match ext.to_lowercase().as_str() {
@@ -93,7 +93,7 @@ pub fn convert_document<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -101,17 +101,17 @@ pub fn convert_document<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     // Try LibreOffice first
     if let Ok(result) = convert_with_libreoffice(input_path, output_path, format) {
         return Ok(result);
     }
-    
+
     // Try Pandoc
     if let Ok(result) = convert_with_pandoc(input_path, output_path, format) {
         return Ok(result);
     }
-    
+
     Err(DxError::Config {
         message: "Document conversion failed. Install LibreOffice or Pandoc.".to_string(),
         source: None,
@@ -122,7 +122,7 @@ pub fn convert_document<P: AsRef<Path>>(
 fn convert_with_libreoffice(input: &Path, output: &Path, format: DocFormat) -> Result<ToolOutput> {
     let output_dir = output.parent().unwrap_or(Path::new("."));
     let output_ext = format.extension();
-    
+
     // LibreOffice command line
     let lo_names = if cfg!(windows) {
         vec!["soffice", "libreoffice"]
@@ -135,7 +135,7 @@ fn convert_with_libreoffice(input: &Path, output: &Path, format: DocFormat) -> R
     } else {
         vec!["libreoffice", "soffice"]
     };
-    
+
     for lo in lo_names {
         let mut cmd = Command::new(lo);
         cmd.arg("--headless")
@@ -144,7 +144,7 @@ fn convert_with_libreoffice(input: &Path, output: &Path, format: DocFormat) -> R
             .arg("--outdir")
             .arg(output_dir)
             .arg(input);
-        
+
         if let Ok(result) = cmd.output() {
             if result.status.success() {
                 // LibreOffice outputs with same basename
@@ -153,7 +153,7 @@ fn convert_with_libreoffice(input: &Path, output: &Path, format: DocFormat) -> R
                     input.file_stem().unwrap_or_default().to_string_lossy(),
                     output_ext
                 ));
-                
+
                 // Rename if needed
                 if temp_output != output {
                     if let Err(e) = std::fs::rename(&temp_output, output) {
@@ -166,7 +166,7 @@ fn convert_with_libreoffice(input: &Path, output: &Path, format: DocFormat) -> R
                         let _ = std::fs::remove_file(&temp_output);
                     }
                 }
-                
+
                 return Ok(ToolOutput::success_with_path(
                     format!("Converted to {} using LibreOffice", output_ext),
                     output,
@@ -174,7 +174,7 @@ fn convert_with_libreoffice(input: &Path, output: &Path, format: DocFormat) -> R
             }
         }
     }
-    
+
     Err(DxError::Config {
         message: "LibreOffice conversion failed".to_string(),
         source: None,
@@ -185,7 +185,7 @@ fn convert_with_libreoffice(input: &Path, output: &Path, format: DocFormat) -> R
 fn convert_with_pandoc(input: &Path, output: &Path, format: DocFormat) -> Result<ToolOutput> {
     let mut cmd = Command::new("pandoc");
     cmd.arg("-o").arg(output).arg(input);
-    
+
     // Add format-specific options
     match format {
         DocFormat::Pdf => {
@@ -196,22 +196,19 @@ fn convert_with_pandoc(input: &Path, output: &Path, format: DocFormat) -> Result
         }
         _ => {}
     }
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run pandoc: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
-            message: format!(
-                "Pandoc failed: {}",
-                String::from_utf8_lossy(&result.stderr)
-            ),
+            message: format!("Pandoc failed: {}", String::from_utf8_lossy(&result.stderr)),
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Converted to {} using Pandoc", format.extension()),
         output,
@@ -255,9 +252,9 @@ pub fn batch_convert<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut converted = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
@@ -265,12 +262,12 @@ pub fn batch_convert<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("document");
         let output_path = output_dir.join(format!("{}.{}", file_stem, format.extension()));
-        
+
         if convert_document(input_path, &output_path, format).is_ok() {
             converted.push(output_path);
         }
     }
-    
+
     Ok(ToolOutput::success(format!(
         "Converted {} documents to {}",
         converted.len(),
@@ -282,7 +279,7 @@ pub fn batch_convert<P: AsRef<Path>>(
 /// Get document info.
 pub fn get_doc_info<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -290,34 +287,34 @@ pub fn get_doc_info<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
             source: None,
         });
     }
-    
+
     let mut output = ToolOutput::success("Document info retrieved");
-    
+
     // File info
     if let Ok(metadata) = std::fs::metadata(input_path) {
         output = output.with_metadata("size", metadata.len().to_string());
     }
-    
+
     // Format
     if let Some(ext) = input_path.extension().and_then(|e| e.to_str()) {
         if let Some(format) = DocFormat::from_extension(ext) {
             output = output.with_metadata("format", format!("{:?}", format));
         }
     }
-    
+
     Ok(output)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_format_extension() {
         assert_eq!(DocFormat::Pdf.extension(), "pdf");
         assert_eq!(DocFormat::Docx.extension(), "docx");
     }
-    
+
     #[test]
     fn test_format_detection() {
         assert_eq!(DocFormat::from_extension("pdf"), Some(DocFormat::Pdf));

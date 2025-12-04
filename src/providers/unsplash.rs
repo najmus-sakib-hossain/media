@@ -10,9 +10,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Unsplash provider for high-resolution photography.
 #[derive(Debug)]
@@ -89,7 +87,7 @@ impl Provider for UnsplashProvider {
         };
 
         let url = format!("{}/search/photos", self.base_url());
-        
+
         let params = UnsplashSearchParams {
             query: &query.query,
             page: query.page,
@@ -99,10 +97,8 @@ impl Provider for UnsplashProvider {
         };
 
         let headers = [("Authorization", format!("Client-ID {api_key}"))];
-        let headers_ref: Vec<(&str, &str)> = headers
-            .iter()
-            .map(|(k, v)| (*k, v.as_str()))
-            .collect();
+        let headers_ref: Vec<(&str, &str)> =
+            headers.iter().map(|(k, v)| (*k, v.as_str())).collect();
 
         let response = self
             .client
@@ -261,7 +257,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = UnsplashProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "unsplash");
         assert_eq!(provider.display_name(), "Unsplash");
         assert!(provider.requires_api_key());

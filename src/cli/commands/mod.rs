@@ -11,24 +11,12 @@ use crate::error::Result;
 /// Execute a CLI command.
 pub async fn execute(args: Args) -> Result<()> {
     match args.command {
-        Command::Search(search_args) => {
-            search::execute(search_args, args.format, args.quiet).await
-        }
-        Command::Download(download_args) => {
-            download::execute(download_args, args.quiet).await
-        }
-        Command::Scrape(scrape_args) => {
-            scrape::execute(scrape_args, args.format, args.quiet).await
-        }
-        Command::Providers(provider_args) => {
-            providers::execute(provider_args, args.format).await
-        }
-        Command::Config => {
-            config_command(args.format).await
-        }
-        Command::Interactive => {
-            interactive_command().await
-        }
+        Command::Search(search_args) => search::execute(search_args, args.format, args.quiet).await,
+        Command::Download(download_args) => download::execute(download_args, args.quiet).await,
+        Command::Scrape(scrape_args) => scrape::execute(scrape_args, args.format, args.quiet).await,
+        Command::Providers(provider_args) => providers::execute(provider_args, args.format).await,
+        Command::Config => config_command(args.format).await,
+        Command::Interactive => interactive_command().await,
     }
 }
 
@@ -53,13 +41,24 @@ async fn config_command(format: crate::cli::args::OutputFormat) -> Result<()> {
         _ => {
             println!("{}", "DX Media Configuration".bold().cyan());
             println!();
-            println!("  {} {}", "Download Directory:".dimmed(), config.download_dir.display());
+            println!(
+                "  {} {}",
+                "Download Directory:".dimmed(),
+                config.download_dir.display()
+            );
             println!("  {} {} seconds", "Timeout:".dimmed(), config.timeout_secs);
             println!("  {} {}", "Retry Attempts:".dimmed(), config.retry_attempts);
             println!();
             println!("{}", "Providers:".bold());
-            println!("  {} {}", "Status:".dimmed(), "All 6 providers are FREE - no API keys required!".green());
-            println!("  {} Openverse, Wikimedia, NASA, Archive, Met Museum, Picsum", "Available:".dimmed());
+            println!(
+                "  {} {}",
+                "Status:".dimmed(),
+                "All 6 providers are FREE - no API keys required!".green()
+            );
+            println!(
+                "  {} Openverse, Wikimedia, NASA, Archive, Met Museum, Picsum",
+                "Available:".dimmed()
+            );
         }
     }
 
@@ -72,6 +71,6 @@ async fn interactive_command() -> Result<()> {
 
     println!("{}", "Interactive mode coming soon!".yellow());
     println!("For now, use the search and download commands.");
-    
+
     Ok(())
 }

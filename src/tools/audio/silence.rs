@@ -37,7 +37,7 @@ impl SilenceOptions {
             padding: 0.05,
         }
     }
-    
+
     /// Conservative silence removal (higher threshold).
     pub fn conservative() -> Self {
         Self {
@@ -79,7 +79,7 @@ pub fn remove_silence<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -87,26 +87,26 @@ pub fn remove_silence<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     // Use silenceremove filter
     let filter = format!(
         "silenceremove=start_periods=1:start_duration=0:start_threshold={}dB:detection=peak,silenceremove=stop_periods=-1:stop_duration={}:stop_threshold={}dB:detection=peak",
-        options.threshold_db,
-        options.min_duration,
-        options.threshold_db
+        options.threshold_db, options.min_duration, options.threshold_db
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -116,7 +116,7 @@ pub fn remove_silence<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     // Calculate size reduction
     let input_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
     let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
@@ -125,7 +125,7 @@ pub fn remove_silence<P: AsRef<Path>>(
     } else {
         0.0
     };
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Removed silence (size reduced by {:.1}%)", reduction),
         output_path,
@@ -138,7 +138,7 @@ pub fn detect_silence<P: AsRef<Path>>(
     options: SilenceOptions,
 ) -> Result<Vec<SilenceSegment>> {
     let input_path = input.as_ref();
-    
+
     if !input_path.exists() {
         return Err(DxError::FileIo {
             path: input_path.to_path_buf(),
@@ -146,43 +146,55 @@ pub fn detect_silence<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let filter = format!(
         "silencedetect=noise={}dB:d={}",
-        options.threshold_db,
-        options.min_duration
+        options.threshold_db, options.min_duration
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
-    cmd.arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
-        .arg("-f").arg("null")
+    cmd.arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
+        .arg("-f")
+        .arg("null")
         .arg("-");
-    
+
     let output = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Parse silence detection output
     let mut segments = Vec::new();
     let mut current_start: Option<f64> = None;
-    
+
     for line in stderr.lines() {
         if line.contains("silence_start:") {
             if let Some(time_str) = line.split("silence_start:").nth(1) {
-                if let Ok(time) = time_str.trim().split_whitespace().next()
-                    .unwrap_or("0").parse::<f64>() {
+                if let Ok(time) = time_str
+                    .trim()
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("0")
+                    .parse::<f64>()
+                {
                     current_start = Some(time);
                 }
             }
         } else if line.contains("silence_end:") {
             if let Some(start) = current_start {
                 if let Some(time_str) = line.split("silence_end:").nth(1) {
-                    if let Ok(end) = time_str.trim().split_whitespace().next()
-                        .unwrap_or("0").parse::<f64>() {
+                    if let Ok(end) = time_str
+                        .trim()
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or("0")
+                        .parse::<f64>()
+                    {
                         segments.push(SilenceSegment {
                             start,
                             end,
@@ -194,7 +206,7 @@ pub fn detect_silence<P: AsRef<Path>>(
             }
         }
     }
-    
+
     Ok(segments)
 }
 
@@ -206,23 +218,25 @@ pub fn trim_leading_silence<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let filter = format!(
         "silenceremove=start_periods=1:start_threshold={}dB:detection=peak",
         options.threshold_db
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -232,7 +246,7 @@ pub fn trim_leading_silence<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Trimmed leading silence",
         output_path,
@@ -247,24 +261,26 @@ pub fn trim_trailing_silence<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     // Reverse, trim leading, reverse again
     let filter = format!(
         "areverse,silenceremove=start_periods=1:start_threshold={}dB:detection=peak,areverse",
         options.threshold_db
     );
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -274,7 +290,7 @@ pub fn trim_trailing_silence<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         "Trimmed trailing silence",
         output_path,
@@ -290,24 +306,26 @@ pub fn add_silence<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let filter = if at_start {
         format!("adelay={}s:all=1", duration)
     } else {
         format!("apad=pad_dur={}", duration)
     };
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-i").arg(input_path)
-        .arg("-af").arg(&filter)
+        .arg("-i")
+        .arg(input_path)
+        .arg("-af")
+        .arg(&filter)
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -317,7 +335,7 @@ pub fn add_silence<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     let position = if at_start { "start" } else { "end" };
     Ok(ToolOutput::success_with_path(
         format!("Added {:.1}s silence at {}", duration, position),
@@ -338,19 +356,22 @@ pub fn generate_silence<P: AsRef<Path>>(
     sample_rate: u32,
 ) -> Result<ToolOutput> {
     let output_path = output.as_ref();
-    
+
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
-        .arg("-f").arg("lavfi")
-        .arg("-i").arg(format!("anullsrc=r={}:cl=stereo", sample_rate))
-        .arg("-t").arg(format!("{:.3}", duration))
+        .arg("-f")
+        .arg("lavfi")
+        .arg("-i")
+        .arg(format!("anullsrc=r={}:cl=stereo", sample_rate))
+        .arg("-t")
+        .arg(format!("{:.3}", duration))
         .arg(output_path);
-    
+
     let result = cmd.output().map_err(|e| DxError::Config {
         message: format!("Failed to run FFmpeg: {}", e),
         source: None,
     })?;
-    
+
     if !result.status.success() {
         return Err(DxError::Config {
             message: format!(
@@ -360,7 +381,7 @@ pub fn generate_silence<P: AsRef<Path>>(
             source: None,
         });
     }
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Generated {:.1}s of silence", duration),
         output_path,
@@ -379,9 +400,9 @@ pub fn batch_remove_silence<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut processed = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_name = input_path
@@ -389,25 +410,24 @@ pub fn batch_remove_silence<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("audio.mp3");
         let output_path = output_dir.join(format!("clean_{}", file_name));
-        
+
         if remove_silence(input_path, &output_path, options.clone()).is_ok() {
             processed.push(output_path);
         }
     }
-    
-    Ok(ToolOutput::success(format!("Processed {} files", processed.len()))
-        .with_paths(processed))
+
+    Ok(ToolOutput::success(format!("Processed {} files", processed.len())).with_paths(processed))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_silence_options() {
         let default = SilenceOptions::default();
         assert_eq!(default.threshold_db, -50.0);
-        
+
         let aggressive = SilenceOptions::aggressive();
         assert!(aggressive.threshold_db > default.threshold_db);
     }

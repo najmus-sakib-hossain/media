@@ -39,7 +39,7 @@ impl ImageFormat {
             Self::Tiff => "tiff",
         }
     }
-    
+
     /// Convert to image crate's ImageFormat.
     pub fn to_image_format(&self) -> ImgFormat {
         match self {
@@ -52,7 +52,7 @@ impl ImageFormat {
             Self::Tiff => ImgFormat::Tiff,
         }
     }
-    
+
     /// Parse format from string.
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
@@ -66,7 +66,7 @@ impl ImageFormat {
             _ => None,
         }
     }
-    
+
     /// Detect format from file extension.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Option<Self> {
         path.as_ref()
@@ -89,17 +89,21 @@ impl ImageFormat {
 ///
 /// convert_image("input.png", "output.jpg", ImageFormat::Jpeg).unwrap();
 /// ```
-pub fn convert_image<P: AsRef<Path>>(input: P, output: P, format: ImageFormat) -> Result<ToolOutput> {
+pub fn convert_image<P: AsRef<Path>>(
+    input: P,
+    output: P,
+    format: ImageFormat,
+) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     // Load the image
     let img = image::open(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to open image: {}", e),
         source: None,
     })?;
-    
+
     // Save in the target format
     img.save_with_format(output_path, format.to_image_format())
         .map_err(|e| DxError::FileIo {
@@ -107,14 +111,10 @@ pub fn convert_image<P: AsRef<Path>>(input: P, output: P, format: ImageFormat) -
             message: format!("Failed to save image: {}", e),
             source: None,
         })?;
-    
-    let input_size = std::fs::metadata(input_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    let output_size = std::fs::metadata(output_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
-    
+
+    let input_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
+    let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
     Ok(ToolOutput::success_with_path(
         format!(
             "Converted {} to {} format ({} bytes -> {} bytes)",
@@ -125,7 +125,13 @@ pub fn convert_image<P: AsRef<Path>>(input: P, output: P, format: ImageFormat) -
         ),
         output_path,
     )
-    .with_metadata("input_format", input_path.extension().and_then(|e| e.to_str()).unwrap_or("unknown"))
+    .with_metadata(
+        "input_format",
+        input_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("unknown"),
+    )
     .with_metadata("output_format", format.extension())
     .with_metadata("input_size", input_size.to_string())
     .with_metadata("output_size", output_size.to_string()))
@@ -148,10 +154,10 @@ pub fn batch_convert<P: AsRef<Path>>(
         message: format!("Failed to create output directory: {}", e),
         source: None,
     })?;
-    
+
     let mut converted = Vec::new();
     let mut failed = Vec::new();
-    
+
     for input in inputs {
         let input_path = input.as_ref();
         let file_stem = input_path
@@ -159,15 +165,19 @@ pub fn batch_convert<P: AsRef<Path>>(
             .and_then(|s| s.to_str())
             .unwrap_or("output");
         let output_path = output_dir.join(format!("{}.{}", file_stem, format.extension()));
-        
+
         match convert_image(input_path, &output_path, format) {
             Ok(_) => converted.push(output_path),
             Err(e) => failed.push((input_path.to_path_buf(), e.to_string())),
         }
     }
-    
+
     let message = if failed.is_empty() {
-        format!("Successfully converted {} images to {} format", converted.len(), format.extension())
+        format!(
+            "Successfully converted {} images to {} format",
+            converted.len(),
+            format.extension()
+        )
     } else {
         format!(
             "Converted {} images, {} failed",
@@ -175,14 +185,14 @@ pub fn batch_convert<P: AsRef<Path>>(
             failed.len()
         )
     };
-    
+
     Ok(ToolOutput::success(message).with_paths(converted))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_format_from_str() {
         assert_eq!(ImageFormat::from_str("png"), Some(ImageFormat::Png));
@@ -191,7 +201,7 @@ mod tests {
         assert_eq!(ImageFormat::from_str("webp"), Some(ImageFormat::WebP));
         assert_eq!(ImageFormat::from_str("invalid"), None);
     }
-    
+
     #[test]
     fn test_format_extension() {
         assert_eq!(ImageFormat::Png.extension(), "png");

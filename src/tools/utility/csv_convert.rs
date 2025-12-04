@@ -47,15 +47,15 @@ pub fn csv_to_json_with_options<P: AsRef<Path>>(
 ) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let content = std::fs::read_to_string(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let rows = parse_csv(&content, &options)?;
-    
+
     let json = if options.has_header && !rows.is_empty() {
         // Use first row as keys
         let headers = &rows[0];
@@ -85,13 +85,13 @@ pub fn csv_to_json_with_options<P: AsRef<Path>>(
             .collect();
         format!("[{}]", data.join(","))
     };
-    
+
     std::fs::write(output_path, &json).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to write file: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Converted {} rows to JSON", rows.len()),
         output_path,
@@ -103,21 +103,21 @@ pub fn csv_to_json_with_options<P: AsRef<Path>>(
 pub fn json_to_csv<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let content = std::fs::read_to_string(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let csv = json_to_csv_string(&content)?;
-    
+
     std::fs::write(output_path, &csv).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to write file: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         "Converted JSON to CSV",
         output_path,
@@ -128,49 +128,49 @@ pub fn json_to_csv<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
 pub fn csv_to_markdown<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let content = std::fs::read_to_string(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let rows = parse_csv(&content, &CsvOptions::default())?;
-    
+
     if rows.is_empty() {
         return Err(DxError::Config {
             message: "Empty CSV file".to_string(),
             source: None,
         });
     }
-    
+
     let mut markdown = String::new();
-    
+
     // Header row
     markdown.push_str("| ");
     markdown.push_str(&rows[0].join(" | "));
     markdown.push_str(" |\n");
-    
+
     // Separator
     markdown.push_str("|");
     for _ in &rows[0] {
         markdown.push_str(" --- |");
     }
     markdown.push('\n');
-    
+
     // Data rows
     for row in &rows[1..] {
         markdown.push_str("| ");
         markdown.push_str(&row.join(" | "));
         markdown.push_str(" |\n");
     }
-    
+
     std::fs::write(output_path, &markdown).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to write file: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Converted {} rows to Markdown", rows.len()),
         output_path,
@@ -181,31 +181,31 @@ pub fn csv_to_markdown<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput
 pub fn csv_to_html<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
-    
+
     let content = std::fs::read_to_string(input_path).map_err(|e| DxError::FileIo {
         path: input_path.to_path_buf(),
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let rows = parse_csv(&content, &CsvOptions::default())?;
-    
+
     if rows.is_empty() {
         return Err(DxError::Config {
             message: "Empty CSV file".to_string(),
             source: None,
         });
     }
-    
+
     let mut html = String::from("<table>\n");
-    
+
     // Header
     html.push_str("  <thead>\n    <tr>\n");
     for cell in &rows[0] {
         html.push_str(&format!("      <th>{}</th>\n", escape_html(cell)));
     }
     html.push_str("    </tr>\n  </thead>\n");
-    
+
     // Body
     html.push_str("  <tbody>\n");
     for row in &rows[1..] {
@@ -216,13 +216,13 @@ pub fn csv_to_html<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
         html.push_str("    </tr>\n");
     }
     html.push_str("  </tbody>\n</table>");
-    
+
     std::fs::write(output_path, &html).map_err(|e| DxError::FileIo {
         path: output_path.to_path_buf(),
         message: format!("Failed to write file: {}", e),
         source: None,
     })?;
-    
+
     Ok(ToolOutput::success_with_path(
         format!("Converted {} rows to HTML", rows.len()),
         output_path,
@@ -236,7 +236,7 @@ fn parse_csv(content: &str, options: &CsvOptions) -> Result<Vec<Vec<String>>> {
     let mut current_field = String::new();
     let mut in_quotes = false;
     let mut prev_was_quote = false;
-    
+
     for c in content.chars() {
         if prev_was_quote {
             prev_was_quote = false;
@@ -248,7 +248,7 @@ fn parse_csv(content: &str, options: &CsvOptions) -> Result<Vec<Vec<String>>> {
                 in_quotes = false;
             }
         }
-        
+
         if c == options.quote {
             if in_quotes {
                 prev_was_quote = true;
@@ -271,7 +271,7 @@ fn parse_csv(content: &str, options: &CsvOptions) -> Result<Vec<Vec<String>>> {
             current_field.push(c);
         }
     }
-    
+
     // Handle last row
     if !current_field.is_empty() || !current_row.is_empty() {
         current_row.push(current_field.trim().to_string());
@@ -279,7 +279,7 @@ fn parse_csv(content: &str, options: &CsvOptions) -> Result<Vec<Vec<String>>> {
             rows.push(current_row);
         }
     }
-    
+
     Ok(rows)
 }
 
@@ -287,17 +287,17 @@ fn parse_csv(content: &str, options: &CsvOptions) -> Result<Vec<Vec<String>>> {
 fn json_to_csv_string(json: &str) -> Result<String> {
     // This is a basic implementation
     // For proper JSON parsing, use serde_json
-    
+
     // Extract keys from first object
     let json = json.trim();
-    
+
     if !json.starts_with('[') {
         return Err(DxError::Config {
             message: "Expected JSON array".to_string(),
             source: None,
         });
     }
-    
+
     // Very basic parsing - would need proper JSON parser for production
     Ok("Note: Full JSON parsing requires serde_json crate".to_string())
 }
@@ -326,23 +326,21 @@ pub fn csv_stats<P: AsRef<Path>>(input: P) -> Result<ToolOutput> {
         message: format!("Failed to read file: {}", e),
         source: None,
     })?;
-    
+
     let rows = parse_csv(&content, &CsvOptions::default())?;
     let column_count = rows.first().map(|r| r.len()).unwrap_or(0);
-    
-    Ok(ToolOutput::success(format!(
-        "Rows: {}\nColumns: {}",
-        rows.len(),
-        column_count
-    ))
-    .with_metadata("row_count", rows.len().to_string())
-    .with_metadata("column_count", column_count.to_string()))
+
+    Ok(
+        ToolOutput::success(format!("Rows: {}\nColumns: {}", rows.len(), column_count))
+            .with_metadata("row_count", rows.len().to_string())
+            .with_metadata("column_count", column_count.to_string()),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parse_csv() {
         let csv = "a,b,c\n1,2,3\n4,5,6";
@@ -350,7 +348,7 @@ mod tests {
         assert_eq!(rows.len(), 3);
         assert_eq!(rows[0], vec!["a", "b", "c"]);
     }
-    
+
     #[test]
     fn test_quoted_csv() {
         let csv = r#"name,value

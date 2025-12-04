@@ -28,12 +28,12 @@ mod wikimedia;
 // ═══════════════════════════════════════════════════════════════════════════════
 // PREMIUM PROVIDERS (Optional API Key - Graceful Degradation)
 // ═══════════════════════════════════════════════════════════════════════════════
-mod unsplash;    // 5M+ high-quality photos (free API key)
-mod pexels;      // 3.5M+ photos & videos (free API key)
-mod pixabay;     // 4.2M+ images, videos, music (free API key)
-mod freesound;   // 600K+ sound effects (free API key)
-mod giphy;       // Millions of GIFs (free API key)
-mod smithsonian; // 4.5M+ CC0 images (free API key)
+mod freesound; // 600K+ sound effects (free API key)
+mod giphy; // Millions of GIFs (free API key)
+mod pexels; // 3.5M+ photos & videos (free API key)
+mod pixabay; // 4.2M+ images, videos, music (free API key)
+mod smithsonian;
+mod unsplash; // 5M+ high-quality photos (free API key) // 4.5M+ CC0 images (free API key)
 
 mod registry;
 
@@ -60,12 +60,12 @@ pub use wikimedia::WikimediaCommonsProvider;
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUBLIC EXPORTS - PREMIUM PROVIDERS (Optional API Keys)
 // ═══════════════════════════════════════════════════════════════════════════════
-pub use unsplash::UnsplashProvider;
-pub use pexels::PexelsProvider;
-pub use pixabay::PixabayProvider;
 pub use freesound::FreesoundProvider;
 pub use giphy::GiphyProvider;
+pub use pexels::PexelsProvider;
+pub use pixabay::PixabayProvider;
 pub use smithsonian::SmithsonianProvider;
+pub use unsplash::UnsplashProvider;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REGISTRY & TRAITS

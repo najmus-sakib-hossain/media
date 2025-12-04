@@ -1,7 +1,7 @@
 //! NASA Images provider implementation.
 //!
 //! [NASA Images API Documentation](https://images.nasa.gov/docs/images.nasa.gov_api_docs.pdf)
-//! 
+//!
 //! Provides access to NASA's image and video library with 140,000+ public domain assets.
 
 use async_trait::async_trait;
@@ -12,9 +12,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::http::{HttpClient, ResponseExt};
 use crate::providers::traits::{Provider, ProviderInfo};
-use crate::types::{
-    License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult,
-};
+use crate::types::{License, MediaAsset, MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// NASA Images provider for space and science media.
 /// Access to 140K+ public domain images and videos.
@@ -92,11 +90,11 @@ impl Provider for NasaImagesProvider {
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/search", self.base_url());
-        
+
         let media_type = Self::media_type_filter(query.media_type);
         let page_str = query.page.to_string();
         let count_str = query.count.min(100).to_string();
-        
+
         let params = [
             ("q", query.query.as_str()),
             ("media_type", media_type),
@@ -104,10 +102,7 @@ impl Provider for NasaImagesProvider {
             ("page_size", &count_str),
         ];
 
-        let response = self
-            .client
-            .get_with_query(&url, &params, &[])
-            .await?;
+        let response = self.client.get_with_query(&url, &params, &[]).await?;
 
         let api_response: NasaSearchResponse = response.json_or_error().await?;
 
@@ -118,9 +113,9 @@ impl Provider for NasaImagesProvider {
             .filter_map(|item| {
                 let data = item.data.into_iter().next()?;
                 let link = item.links.and_then(|l| l.into_iter().next());
-                
+
                 let preview_url = link.as_ref().map(|l| l.href.clone());
-                
+
                 // NASA assets are all public domain
                 let asset = MediaAsset::builder()
                     .id(data.nasa_id)
@@ -134,7 +129,7 @@ impl Provider for NasaImagesProvider {
                     .license(License::PublicDomain)
                     .tags(data.keywords.unwrap_or_default())
                     .build();
-                
+
                 Some(asset)
             })
             .collect();
@@ -225,7 +220,7 @@ mod tests {
     fn test_provider_metadata() {
         let config = Config::default_for_testing();
         let provider = NasaImagesProvider::new(&config);
-        
+
         assert_eq!(provider.name(), "nasa");
         assert_eq!(provider.display_name(), "NASA Images");
         assert!(!provider.requires_api_key());
@@ -236,7 +231,7 @@ mod tests {
     fn test_supported_media_types() {
         let config = Config::default_for_testing();
         let provider = NasaImagesProvider::new(&config);
-        
+
         let types = provider.supported_media_types();
         assert!(types.contains(&MediaType::Image));
         assert!(types.contains(&MediaType::Video));
