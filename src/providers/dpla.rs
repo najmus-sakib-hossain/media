@@ -71,7 +71,7 @@ impl Provider for DplaProvider {
     }
 
     fn requires_api_key(&self) -> bool {
-        false
+        true // DPLA requires API key (free to obtain at https://pro.dp.la/developers/policies)
     }
 
     fn rate_limit(&self) -> RateLimitConfig {
@@ -79,7 +79,8 @@ impl Provider for DplaProvider {
     }
 
     fn is_available(&self) -> bool {
-        true
+        // Requires DPLA_API_KEY environment variable
+        std::env::var("DPLA_API_KEY").is_ok()
     }
 
     fn base_url(&self) -> &'static str {
@@ -87,6 +88,13 @@ impl Provider for DplaProvider {
     }
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {
+        let api_key = std::env::var("DPLA_API_KEY").map_err(|_| {
+            crate::error::DxError::MissingApiKey {
+                provider: "dpla".to_string(),
+                env_var: "DPLA_API_KEY".to_string(),
+            }
+        })?;
+        
         let url = format!("{}/items", self.base_url());
 
         let page_size = query.count.min(500).to_string();
@@ -96,7 +104,7 @@ impl Provider for DplaProvider {
             ("q", query.query.as_str()),
             ("page_size", page_size.as_str()),
             ("page", page_str.as_str()),
-            ("api_key", "d770e5fbf41bb07131ef8f21d6bec4c8"), // Public DPLA demo key
+            ("api_key", api_key.as_str()),
         ];
 
         let response = self.client.get_with_query(&url, &params, &[]).await?;
