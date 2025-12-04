@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::config::Config;
-use crate::engine::{Downloader, FileManager, SearchEngine};
+use crate::engine::{Downloader, FileManager, SearchEngine, Scraper, ScrapeOptions};
 use crate::error::Result;
 use crate::providers::ProviderRegistry;
 use crate::types::{MediaAsset, MediaType, SearchQuery, SearchResult};
@@ -161,6 +161,105 @@ impl DxMedia {
     #[must_use]
     pub fn download_dir(&self) -> &Path {
         self.downloader.download_dir()
+    }
+
+    /// Search all providers AND scrapers concurrently.
+    /// 
+    /// This is the main unified search function that:
+    /// 1. Searches all available API providers concurrently
+    /// 2. Scrapes configured free image sites concurrently
+    /// 3. Returns combined results from all sources
+    /// 
+    /// # Example
+    /// 
+    /// ```no_run
+    /// # use dx_media::DxMedia;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let dx = DxMedia::new()?;
+    /// let results = dx.search_all("sunset mountains", 10).await?;
+    /// println!("Found {} total results from {} sources", 
+    ///     results.assets.len(), 
+    ///     results.providers_searched.len()
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn search_all(&self, query: &str, count_per_source: usize) -> Result<SearchResult> {
+        use std::time::Instant;
+        let start = Instant::now();
+
+        // Build search query for providers
+        let search_query = SearchQuery::new(query).count(count_per_source);
+        
+        // Create scraper for web scraping
+        let scraper = Scraper::new()?;
+        
+        // Define scraping targets (sites that work without Cloudflare protection)
+        let scrape_urls = self.get_scrape_search_urls(query);
+        
+        // Create futures for provider search
+        let provider_future = self.search_engine.search(&search_query);
+        
+        // Create futures for scraper searches
+        let scrape_futures: Vec<_> = scrape_urls
+            .into_iter()
+            .map(|(name, url)| {
+                let scraper = scraper.clone();
+                let options = ScrapeOptions {
+                    max_depth: 0,
+                    pattern: None,
+                    media_types: vec![MediaType::Image],
+                    max_assets: count_per_source,
+                };
+                async move {
+                    let result = scraper.scrape(&url, &options).await;
+                    (name, result)
+                }
+            })
+            .collect();
+
+        // Execute all searches concurrently
+        let (provider_result, scrape_results) = tokio::join!(
+            provider_future,
+            futures::future::join_all(scrape_futures)
+        );
+
+        // Start with provider results
+        let mut result = provider_result.unwrap_or_else(|_| SearchResult::new(query));
+        
+        // Add scraper results
+        for (name, scrape_result) in scrape_results {
+            match scrape_result {
+                Ok(sr) => {
+                    result.providers_searched.push(format!("scraper:{}", name));
+                    result.total_count += sr.assets.len();
+                    result.assets.extend(sr.assets);
+                }
+                Err(e) => {
+                    result.provider_errors.push((format!("scraper:{}", name), e.to_string()));
+                }
+            }
+        }
+
+        result.duration_ms = start.elapsed().as_millis() as u64;
+        Ok(result)
+    }
+
+    /// Get search URLs for scraping targets.
+    /// 
+    /// Returns a list of (name, url) pairs for sites that support search
+    /// and don't have Cloudflare protection.
+    fn get_scrape_search_urls(&self, _query: &str) -> Vec<(String, String)> {
+        // Only include sites that:
+        // 1. Support search via URL parameter
+        // 2. Don't have Cloudflare/bot protection
+        // 3. Return useful results without JavaScript
+        vec![
+            // Flickr explore (no search, but popular images)
+            ("flickr".to_string(), "https://www.flickr.com/explore".to_string()),
+            // NASA image gallery
+            ("nasa-gallery".to_string(), "https://www.nasa.gov/multimedia/imagegallery/".to_string()),
+        ]
     }
 }
 

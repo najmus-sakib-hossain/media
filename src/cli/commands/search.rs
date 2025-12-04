@@ -13,15 +13,6 @@ use crate::types::SearchQuery;
 pub async fn execute(args: SearchArgs, format: OutputFormat, quiet: bool) -> Result<()> {
     let dx = DxMedia::new()?;
 
-    // Build the search query
-    let mut query = SearchQuery::new(args.query_string());
-    query.count = args.count;
-    query.page = args.page;
-    query.media_type = args.media_type.and_then(Into::into);
-    query.providers = args.providers.clone();
-    query.orientation = args.orientation.map(Into::into);
-    query.color = args.color.clone();
-
     // Show progress indicator
     let spinner = if !quiet && matches!(format, OutputFormat::Text) {
         let pb = ProgressBar::new_spinner();
@@ -31,15 +22,29 @@ pub async fn execute(args: SearchArgs, format: OutputFormat, quiet: bool) -> Res
                 .template("{spinner:.cyan} {msg}")
                 .unwrap(),
         );
-        pb.set_message(format!("Searching for '{}'...", args.query_string()));
+        let search_type = if args.all { "all providers & scrapers" } else { "providers" };
+        pb.set_message(format!("Searching {} for '{}'...", search_type, args.query_string()));
         pb.enable_steady_tick(std::time::Duration::from_millis(80));
         Some(pb)
     } else {
         None
     };
 
-    // Execute search
-    let result = dx.search_query(&query).await?;
+    // Execute search - use unified search if --all is specified
+    let result = if args.all {
+        dx.search_all(&args.query_string(), args.count).await?
+    } else {
+        // Build the search query for regular search
+        let mut query = SearchQuery::new(args.query_string());
+        query.count = args.count;
+        query.page = args.page;
+        query.media_type = args.media_type.and_then(Into::into);
+        query.providers = args.providers.clone();
+        query.orientation = args.orientation.map(Into::into);
+        query.color = args.color.clone();
+        
+        dx.search_query(&query).await?
+    };
 
     // Clear spinner
     if let Some(pb) = spinner {

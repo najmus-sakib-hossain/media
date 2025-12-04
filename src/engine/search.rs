@@ -45,23 +45,42 @@ impl SearchEngine {
         Ok(result)
     }
 
-    /// Search specific providers by name.
+    /// Search specific providers by name (concurrently).
     async fn search_specific_providers(&self, query: &SearchQuery) -> Result<SearchResult> {
+        // Create futures for all requested provider searches
+        let search_futures: Vec<_> = query
+            .providers
+            .iter()
+            .map(|provider_name| {
+                let registry = Arc::clone(&self.registry);
+                let provider_name = provider_name.clone();
+                let query = query.clone();
+                async move {
+                    let result = registry.search_provider(&provider_name, &query).await;
+                    (provider_name, result)
+                }
+            })
+            .collect();
+
+        // Execute all searches concurrently
+        let results = futures::future::join_all(search_futures).await;
+
+        // Aggregate results
         let mut all_assets = Vec::new();
         let mut providers_searched = Vec::new();
         let mut provider_errors = Vec::new();
         let mut total_count = 0;
 
-        for provider_name in &query.providers {
+        for (provider_name, result) in results {
             providers_searched.push(provider_name.clone());
 
-            match self.registry.search_provider(provider_name, query).await {
-                Ok(result) => {
-                    total_count += result.total_count;
-                    all_assets.extend(result.assets);
+            match result {
+                Ok(search_result) => {
+                    total_count += search_result.total_count;
+                    all_assets.extend(search_result.assets);
                 }
                 Err(e) => {
-                    provider_errors.push((provider_name.clone(), e.to_string()));
+                    provider_errors.push((provider_name, e.to_string()));
                 }
             }
         }

@@ -100,6 +100,10 @@ pub struct SearchArgs {
     /// Output directory for downloads.
     #[arg(short, long)]
     pub output: Option<String>,
+
+    /// Search ALL providers and scrapers concurrently for maximum results.
+    #[arg(long)]
+    pub all: bool,
 }
 
 impl SearchArgs {

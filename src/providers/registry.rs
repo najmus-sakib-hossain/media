@@ -234,6 +234,8 @@ impl ProviderRegistry {
     }
 
     /// Search all available providers and aggregate results.
+    /// 
+    /// This searches all providers **concurrently** for maximum performance.
     pub async fn search_all(&self, query: &SearchQuery) -> Result<SearchResult> {
         let providers = match query.media_type {
             Some(media_type) => self.for_media_type(media_type),
@@ -246,20 +248,36 @@ impl ProviderRegistry {
             });
         }
 
+        // Create futures for all provider searches
+        let search_futures: Vec<_> = providers
+            .iter()
+            .map(|provider| {
+                let provider = Arc::clone(provider);
+                let query = query.clone();
+                async move {
+                    let name = provider.name().to_string();
+                    let result = provider.search(&query).await;
+                    (name, result)
+                }
+            })
+            .collect();
+
+        // Execute all searches concurrently
+        let results = futures::future::join_all(search_futures).await;
+
+        // Aggregate results
         let mut all_assets = Vec::new();
         let mut providers_searched = Vec::new();
         let mut provider_errors = Vec::new();
         let mut total_count = 0;
 
-        // Search each provider sequentially (parallel would need more complexity)
-        for provider in providers {
-            let provider_name = provider.name().to_string();
+        for (provider_name, result) in results {
             providers_searched.push(provider_name.clone());
 
-            match provider.search(query).await {
-                Ok(result) => {
-                    total_count += result.total_count;
-                    all_assets.extend(result.assets);
+            match result {
+                Ok(search_result) => {
+                    total_count += search_result.total_count;
+                    all_assets.extend(search_result.assets);
                 }
                 Err(e) => {
                     provider_errors.push((provider_name, e.to_string()));
