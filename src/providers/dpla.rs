@@ -206,8 +206,9 @@ mod tests {
 
         assert_eq!(provider.name(), "dpla");
         assert_eq!(provider.display_name(), "Digital Public Library of America");
-        assert!(!provider.requires_api_key());
-        assert!(provider.is_available());
+        assert!(provider.requires_api_key());
+        // Without API key, provider is not available
+        assert!(!provider.is_available());
     }
 
     #[test]

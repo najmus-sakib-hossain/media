@@ -367,13 +367,13 @@ mod tests {
         let registry = ProviderRegistry::new(&config);
 
         let stats = registry.stats();
-        // Total: 13 FREE + 6 PREMIUM = 19 providers
+        // Total: 12 FREE + 7 PREMIUM (including DPLA) = 19 providers
         assert_eq!(stats.total, 19);
-        // Without API keys, only 13 FREE providers are available
-        // Premium providers gracefully degrade
-        assert_eq!(stats.available, 13);
-        // 6 premium providers are unavailable without API keys
-        assert_eq!(stats.unavailable, 6);
+        // Without API keys, only 12 FREE providers are available
+        // DPLA now requires an API key, so only 12 are available
+        assert_eq!(stats.available, 12);
+        // 7 premium providers are unavailable without API keys
+        assert_eq!(stats.unavailable, 7);
     }
 
     #[test]
