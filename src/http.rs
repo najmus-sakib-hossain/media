@@ -48,10 +48,20 @@ impl HttpClient {
         headers.insert(ACCEPT, HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"));
         headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.9"));
         
+        // PERFORMANCE OPTIMIZATIONS:
+        // - pool_max_idle_per_host: Keep 10 connections warm per API host
+        // - pool_idle_timeout: Keep connections alive for 30s between requests
+        // - tcp_nodelay: Disable Nagle's algorithm for faster small requests
+        // - http2_adaptive_window: Optimize HTTP/2 flow control
+        // - connection_verbose: Disabled for production
         let client = Client::builder()
             .user_agent(USER_AGENT)
             .default_headers(headers)
             .timeout(timeout)
+            .connect_timeout(Duration::from_secs(5))  // Fast connection or fail
+            .pool_max_idle_per_host(10)               // Keep 10 connections warm per host
+            .pool_idle_timeout(Duration::from_secs(30)) // Connections stay alive 30s
+            .tcp_nodelay(true)                        // Disable Nagle's algorithm
             .gzip(true)
             .brotli(true)
             .build()

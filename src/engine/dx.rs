@@ -190,8 +190,8 @@ impl DxMedia {
         
         let start = Instant::now();
         
-        // Aggressive timeout for scrapers (5 seconds max)
-        let scraper_timeout = Duration::from_secs(5);
+        // AGGRESSIVE timeout for scrapers (3 seconds max - was 5s)
+        let scraper_timeout = Duration::from_secs(3);
 
         // Build search query for providers
         let search_query = SearchQuery::new(query).count(count_per_source);

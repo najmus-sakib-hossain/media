@@ -249,7 +249,11 @@ impl ProviderRegistry {
     /// 
     /// This searches all providers **concurrently** with aggressive timeouts.
     /// Uses `FuturesUnordered` for optimal performance - results are processed
-    /// as they arrive, and slow providers are timed out after 8 seconds.
+    /// as they arrive, and slow providers are timed out after 5 seconds.
+    /// 
+    /// # Early Exit Optimization
+    /// If we gather enough results quickly (3x requested count), we stop waiting
+    /// for slow providers - giving users results FAST.
     pub async fn search_all(&self, query: &SearchQuery) -> Result<SearchResult> {
         use futures::stream::{FuturesUnordered, StreamExt};
         use std::time::Duration;
@@ -265,8 +269,12 @@ impl ProviderRegistry {
             });
         }
 
-        // Per-provider timeout (aggressive - 8 seconds max per provider)
-        let provider_timeout = Duration::from_secs(8);
+        // AGGRESSIVE TIMEOUT: 5 seconds max per provider (was 8s)
+        let provider_timeout = Duration::from_secs(5);
+        
+        // Early exit threshold: stop after 3x requested results
+        // query.count defaults to 20 in SearchQuery::new()
+        let early_exit_threshold = query.count * 3;
 
         // Create a FuturesUnordered for concurrent execution with early returns
         let mut futures: FuturesUnordered<_> = providers
@@ -286,7 +294,7 @@ impl ProviderRegistry {
                         Ok(search_result) => (name, search_result),
                         Err(_) => (name.clone(), Err(crate::error::DxError::ProviderApi {
                             provider: name,
-                            message: "Provider timed out (>8s)".to_string(),
+                            message: "Provider timed out (>5s)".to_string(),
                             status_code: 408,
                         })),
                     }
@@ -299,6 +307,7 @@ impl ProviderRegistry {
         let mut providers_searched = Vec::new();
         let mut provider_errors = Vec::new();
         let mut total_count = 0;
+        let mut skipped_slow_providers = 0;
 
         while let Some((provider_name, result)) = futures.next().await {
             providers_searched.push(provider_name.clone());
@@ -312,6 +321,21 @@ impl ProviderRegistry {
                     provider_errors.push((provider_name, e.to_string()));
                 }
             }
+            
+            // EARLY EXIT: If we have enough results, stop waiting for slow providers
+            if all_assets.len() >= early_exit_threshold && !futures.is_empty() {
+                skipped_slow_providers = futures.len();
+                // Cancel remaining futures by dropping them
+                drop(futures);
+                break;
+            }
+        }
+        
+        if skipped_slow_providers > 0 {
+            provider_errors.push((
+                "early_exit".to_string(),
+                format!("Skipped {} slow providers (had {} results)", skipped_slow_providers, all_assets.len())
+            ));
         }
 
         Ok(SearchResult {

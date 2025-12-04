@@ -50,8 +50,8 @@ impl SearchEngine {
         use futures::stream::{FuturesUnordered, StreamExt};
         use std::time::Duration;
         
-        // Per-provider timeout (8 seconds max)
-        let provider_timeout = Duration::from_secs(8);
+        // AGGRESSIVE per-provider timeout (5 seconds max - was 8s)
+        let provider_timeout = Duration::from_secs(5);
         
         // Create FuturesUnordered for concurrent execution
         let mut futures: FuturesUnordered<_> = query
@@ -71,7 +71,7 @@ impl SearchEngine {
                         Ok(search_result) => (provider_name, search_result),
                         Err(_) => (provider_name.clone(), Err(crate::error::DxError::ProviderApi {
                             provider: provider_name,
-                            message: "Provider timed out (>8s)".to_string(),
+                            message: "Provider timed out (>5s)".to_string(),
                             status_code: 408,
                         })),
                     }
