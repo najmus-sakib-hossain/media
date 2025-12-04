@@ -380,11 +380,12 @@ pub fn split_by_chapters<P: AsRef<Path>>(input: P, output_dir: P) -> Result<Tool
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(0.0);
 
+        let default_title = format!("chapter_{}", i + 1);
         let title = chapter
             .get("tags")
             .and_then(|t| t.get("title"))
             .and_then(|v| v.as_str())
-            .unwrap_or(&format!("chapter_{}", i + 1));
+            .unwrap_or(&default_title);
 
         // Clean title for filename
         let clean_title: String = title

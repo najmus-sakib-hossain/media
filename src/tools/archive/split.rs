@@ -103,13 +103,13 @@ fn split_with_7z(input: &Path, output_dir: &Path, part_size_mb: u64) -> Result<T
         .map(|e| e.path())
         .collect();
 
+    let part_count = parts.len();
     Ok(ToolOutput::success(format!(
         "Split archive into {} parts ({} MB each)",
-        parts.len(),
-        part_size_mb
+        part_count, part_size_mb
     ))
     .with_paths(parts)
-    .with_metadata("part_count", parts.len().to_string())
+    .with_metadata("part_count", part_count.to_string())
     .with_metadata("part_size_mb", part_size_mb.to_string()))
 }
 

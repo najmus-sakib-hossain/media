@@ -187,7 +187,7 @@ fn convert_with_wkhtmltopdf(
 fn convert_with_chrome(
     input: &Path,
     output: &Path,
-    options: &HtmlToPdfOptions,
+    _options: &HtmlToPdfOptions,
 ) -> Result<ToolOutput> {
     // Try common Chrome executable names
     let chrome_names = if cfg!(windows) {
@@ -324,7 +324,7 @@ pub fn html_string_to_pdf<P: AsRef<Path>>(html: &str, output: P) -> Result<ToolO
         source: None,
     })?;
 
-    let result = html_to_pdf(&temp_file, output_path);
+    let result = html_to_pdf(&temp_file, &output_path.to_path_buf());
 
     // Clean up
     let _ = std::fs::remove_file(&temp_file);

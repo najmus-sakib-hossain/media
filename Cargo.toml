@@ -71,6 +71,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tempfile = "3"
 directories = "5"
 sanitize-filename = "0.6"
+walkdir = "2"
 
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }
@@ -78,17 +79,6 @@ uuid = { version = "1", features = ["v4"] }
 dotenvy = "0.15"
 once_cell = "1"
 strum = { version = "0.26", features = ["derive"] }
-
-# ═══════════════════════════════════════════════════════════════
-# TOOLS DEPENDENCIES (Image, Archive, etc.)
-# ═══════════════════════════════════════════════════════════════
-
-# Image Processing
-image = "0.25"
-kamadak-exif = "0.5"
-
-# File System Utilities
-walkdir = "2"
 
 # ═══════════════════════════════════════════════════════════════
 # DEV DEPENDENCIES

@@ -219,7 +219,7 @@ pub fn extract_nth_pages<P: AsRef<Path>>(
         });
     }
 
-    let page_spec = pages.join(" ");
+    let _page_spec = pages.join(" ");
 
     let mut cmd = Command::new("pdftk");
     cmd.arg(input_path).arg("cat");

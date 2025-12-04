@@ -23,7 +23,6 @@ pub use image::ImageTools;
 pub use utility::UtilityTools;
 pub use video::VideoTools;
 
-use crate::error::Result;
 use std::path::Path;
 
 /// Trait for all tool operations.

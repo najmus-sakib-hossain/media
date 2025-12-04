@@ -205,7 +205,7 @@ pub fn auto_merge<P: AsRef<Path>>(first_part: P, output: P) -> Result<ToolOutput
         });
     }
 
-    merge_archives(&parts, output)
+    merge_archives(&parts, output.to_path_buf())
 }
 
 /// Find related parts of split archive.

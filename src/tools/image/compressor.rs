@@ -1,173 +1,83 @@
 //! Image compression tool.
 //!
-//! Reduces image file size with quality control.
+//! Compress images using ImageMagick.
 
 use crate::error::{DxError, Result};
 use crate::tools::ToolOutput;
-use std::fs::File;
-use std::io::BufWriter;
 use std::path::Path;
+use std::process::Command;
 
-/// Compression options for different formats.
-#[derive(Debug, Clone)]
-pub struct CompressionOptions {
-    /// JPEG quality (1-100).
-    pub jpeg_quality: u8,
-    /// PNG compression level (0-9).
-    pub png_compression: u8,
-    /// WebP quality (1-100).
-    pub webp_quality: u8,
-    /// Whether to use lossless compression where available.
-    pub lossless: bool,
+/// Compression quality level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CompressionQuality {
+    /// Low quality, high compression.
+    Low,
+    /// Medium quality.
+    #[default]
+    Medium,
+    /// High quality.
+    High,
+    /// Maximum quality, minimal compression.
+    Maximum,
+    /// Custom quality (0-100).
+    Custom(u8),
 }
 
-impl Default for CompressionOptions {
-    fn default() -> Self {
-        Self {
-            jpeg_quality: 85,
-            png_compression: 6,
-            webp_quality: 80,
-            lossless: false,
-        }
-    }
-}
-
-impl CompressionOptions {
-    /// Create options for high quality output.
-    pub fn high_quality() -> Self {
-        Self {
-            jpeg_quality: 95,
-            png_compression: 3,
-            webp_quality: 90,
-            lossless: false,
-        }
-    }
-
-    /// Create options for maximum compression.
-    pub fn max_compression() -> Self {
-        Self {
-            jpeg_quality: 60,
-            png_compression: 9,
-            webp_quality: 50,
-            lossless: false,
-        }
-    }
-
-    /// Create options with specific quality (1-100).
-    pub fn with_quality(quality: u8) -> Self {
-        let quality = quality.clamp(1, 100);
-        Self {
-            jpeg_quality: quality,
-            png_compression: ((100 - quality) / 11).clamp(0, 9) as u8,
-            webp_quality: quality,
-            lossless: false,
+impl CompressionQuality {
+    fn to_value(&self) -> u8 {
+        match self {
+            Self::Low => 30,
+            Self::Medium => 60,
+            Self::High => 80,
+            Self::Maximum => 95,
+            Self::Custom(v) => *v,
         }
     }
 }
 
-/// Compress an image with quality settings.
+/// Compress an image.
 ///
 /// # Arguments
 /// * `input` - Path to the input image
-/// * `output` - Path for the compressed output
-/// * `quality` - Quality level (1-100, where 100 is best quality)
+/// * `output` - Path to the output image
+/// * `quality` - Quality level (0-100)
 ///
 /// # Example
 /// ```no_run
-/// use dx_media::tools::image::compress_image;
+/// use dx_media::tools::image::compressor::compress;
 ///
-/// // Compress with 80% quality
-/// compress_image("large.jpg", "small.jpg", 80).unwrap();
+/// compress("large.jpg", "compressed.jpg", 75).unwrap();
 /// ```
-pub fn compress_image<P: AsRef<Path>>(input: P, output: P, quality: u8) -> Result<ToolOutput> {
-    compress_with_options(input, output, CompressionOptions::with_quality(quality))
-}
-
-/// Compress an image with detailed options.
-pub fn compress_with_options<P: AsRef<Path>>(
-    input: P,
-    output: P,
-    options: CompressionOptions,
-) -> Result<ToolOutput> {
+pub fn compress<P: AsRef<Path>>(input: P, output: P, quality: u8) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
 
-    let img = image::open(input_path).map_err(|e| DxError::FileIo {
-        path: input_path.to_path_buf(),
-        message: format!("Failed to open image: {}", e),
-        source: None,
-    })?;
+    let quality_arg = quality.to_string();
 
-    let input_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
+    let status = Command::new("magick")
+        .args([
+            "convert",
+            input_path.to_str().unwrap_or(""),
+            "-quality",
+            &quality_arg,
+            output_path.to_str().unwrap_or(""),
+        ])
+        .status()
+        .map_err(|e| DxError::Internal {
+            message: format!("Failed to execute ImageMagick: {}", e),
+        })?;
 
-    // Determine format from output extension
-    let extension = output_path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("jpg")
-        .to_lowercase();
-
-    let file = File::create(output_path).map_err(|e| DxError::FileIo {
-        path: output_path.to_path_buf(),
-        message: format!("Failed to create output file: {}", e),
-        source: None,
-    })?;
-    let mut writer = BufWriter::new(file);
-
-    match extension.as_str() {
-        "jpg" | "jpeg" => {
-            let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
-                &mut writer,
-                options.jpeg_quality,
-            );
-            img.write_with_encoder(encoder)
-                .map_err(|e| DxError::FileIo {
-                    path: output_path.to_path_buf(),
-                    message: format!("Failed to encode JPEG: {}", e),
-                    source: None,
-                })?;
-        }
-        "png" => {
-            let compression = match options.png_compression {
-                0..=2 => image::codecs::png::CompressionType::Fast,
-                3..=6 => image::codecs::png::CompressionType::Default,
-                _ => image::codecs::png::CompressionType::Best,
-            };
-            let encoder = image::codecs::png::PngEncoder::new_with_quality(
-                &mut writer,
-                compression,
-                image::codecs::png::FilterType::Adaptive,
-            );
-            img.write_with_encoder(encoder)
-                .map_err(|e| DxError::FileIo {
-                    path: output_path.to_path_buf(),
-                    message: format!("Failed to encode PNG: {}", e),
-                    source: None,
-                })?;
-        }
-        "webp" => {
-            // WebP encoding - save as PNG with conversion note
-            // Note: Full WebP quality control requires webp crate
-            img.save(output_path).map_err(|e| DxError::FileIo {
-                path: output_path.to_path_buf(),
-                message: format!("Failed to save WebP: {}", e),
-                source: None,
-            })?;
-        }
-        _ => {
-            img.save(output_path).map_err(|e| DxError::FileIo {
-                path: output_path.to_path_buf(),
-                message: format!("Failed to save image: {}", e),
-                source: None,
-            })?;
-        }
+    if !status.success() {
+        return Err(DxError::Internal {
+            message: "ImageMagick compress command failed".to_string(),
+        });
     }
 
-    drop(writer);
-
+    // Get file sizes for comparison
+    let input_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
     let output_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
 
-    let reduction = if input_size > 0 {
+    let savings = if input_size > 0 {
         ((input_size - output_size) as f64 / input_size as f64 * 100.0) as i32
     } else {
         0
@@ -175,86 +85,155 @@ pub fn compress_with_options<P: AsRef<Path>>(
 
     Ok(ToolOutput::success_with_path(
         format!(
-            "Compressed {} ({} bytes -> {} bytes, {}% reduction)",
-            input_path.display(),
-            input_size,
-            output_size,
-            reduction.max(0)
+            "Compressed with quality {}. Size: {} -> {} ({}% saved)",
+            quality,
+            format_size(input_size),
+            format_size(output_size),
+            savings
         ),
         output_path,
     )
+    .with_metadata("quality", quality.to_string())
     .with_metadata("input_size", input_size.to_string())
     .with_metadata("output_size", output_size.to_string())
-    .with_metadata("reduction_percent", reduction.to_string()))
+    .with_metadata("savings_percent", savings.to_string()))
 }
 
-/// Batch compress multiple images.
-pub fn batch_compress<P: AsRef<Path>>(
-    inputs: &[P],
-    output_dir: P,
-    quality: u8,
+/// Compress with quality level.
+pub fn compress_with_level<P: AsRef<Path>>(
+    input: P,
+    output: P,
+    level: CompressionQuality,
 ) -> Result<ToolOutput> {
-    let output_dir = output_dir.as_ref();
-    std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
-        path: output_dir.to_path_buf(),
-        message: format!("Failed to create output directory: {}", e),
-        source: None,
-    })?;
+    compress(input, output, level.to_value())
+}
 
-    let mut compressed = Vec::new();
-    let mut total_input_size: u64 = 0;
-    let mut total_output_size: u64 = 0;
+/// Compress image to target file size.
+pub fn compress_to_size<P: AsRef<Path>>(input: P, output: P, target_kb: u64) -> Result<ToolOutput> {
+    let input_path = input.as_ref();
+    let output_path = output.as_ref();
 
-    for input in inputs {
-        let input_path = input.as_ref();
-        let file_name = input_path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("output.jpg");
-        let output_path = output_dir.join(file_name);
+    let target_bytes = target_kb * 1024;
 
-        if let Ok(input_meta) = std::fs::metadata(input_path) {
-            total_input_size += input_meta.len();
-        }
+    // Binary search for quality
+    let mut low = 1u8;
+    let mut high = 100u8;
+    let mut best_quality = 50u8;
 
-        if compress_image(input_path, &output_path, quality).is_ok() {
-            if let Ok(output_meta) = std::fs::metadata(&output_path) {
-                total_output_size += output_meta.len();
-            }
-            compressed.push(output_path);
+    while low <= high {
+        let mid = (low + high) / 2;
+
+        // Try this quality
+        let temp_output = output_path.with_extension("temp.jpg");
+        compress(input_path, &temp_output, mid)?;
+
+        let size = std::fs::metadata(&temp_output)
+            .map(|m| m.len())
+            .unwrap_or(0);
+
+        let _ = std::fs::remove_file(&temp_output);
+
+        if size <= target_bytes {
+            best_quality = mid;
+            low = mid + 1;
+        } else {
+            high = mid.saturating_sub(1);
         }
     }
 
-    let reduction = if total_input_size > 0 {
-        ((total_input_size - total_output_size) as f64 / total_input_size as f64 * 100.0) as i32
-    } else {
-        0
-    };
+    compress(input_path, output_path, best_quality)?;
 
-    Ok(ToolOutput::success(format!(
-        "Compressed {} images ({}% total reduction)",
-        compressed.len(),
-        reduction.max(0)
-    ))
-    .with_paths(compressed)
-    .with_metadata("total_input_size", total_input_size.to_string())
-    .with_metadata("total_output_size", total_output_size.to_string()))
+    let final_size = std::fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+
+    Ok(ToolOutput::success_with_path(
+        format!(
+            "Compressed to {} (target: {}KB, quality: {})",
+            format_size(final_size),
+            target_kb,
+            best_quality
+        ),
+        output_path,
+    )
+    .with_metadata("quality", best_quality.to_string())
+    .with_metadata("final_size", final_size.to_string()))
 }
 
-/// Optimize an image in-place (overwrite with compressed version).
-pub fn optimize_image<P: AsRef<Path>>(path: P, quality: u8) -> Result<ToolOutput> {
-    let path = path.as_ref();
-    let temp_path = path.with_extension("tmp");
+/// Strip metadata and optimize.
+pub fn optimize<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
+    let input_path = input.as_ref();
+    let output_path = output.as_ref();
 
-    let result = compress_image(path, &temp_path, quality)?;
+    let status = Command::new("magick")
+        .args([
+            "convert",
+            input_path.to_str().unwrap_or(""),
+            "-strip",
+            "-interlace",
+            "Plane",
+            "-sampling-factor",
+            "4:2:0",
+            "-quality",
+            "85",
+            output_path.to_str().unwrap_or(""),
+        ])
+        .status()
+        .map_err(|e| DxError::Internal {
+            message: format!("Failed to execute ImageMagick: {}", e),
+        })?;
 
-    std::fs::rename(&temp_path, path).map_err(|e| DxError::FileIo {
-        path: path.to_path_buf(),
-        message: format!("Failed to replace original: {}", e),
-        source: None,
-    })?;
+    if !status.success() {
+        return Err(DxError::Internal {
+            message: "ImageMagick optimize command failed".to_string(),
+        });
+    }
 
-    Ok(result)
+    Ok(ToolOutput::success_with_path(
+        "Image optimized (stripped metadata, optimized encoding)",
+        output_path,
+    ))
+}
+
+/// Losslessly optimize PNG.
+pub fn optimize_png<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
+    let input_path = input.as_ref();
+    let output_path = output.as_ref();
+
+    let status = Command::new("magick")
+        .args([
+            "convert",
+            input_path.to_str().unwrap_or(""),
+            "-strip",
+            "-define",
+            "png:compression-filter=5",
+            "-define",
+            "png:compression-level=9",
+            "-define",
+            "png:compression-strategy=1",
+            output_path.to_str().unwrap_or(""),
+        ])
+        .status()
+        .map_err(|e| DxError::Internal {
+            message: format!("Failed to execute ImageMagick: {}", e),
+        })?;
+
+    if !status.success() {
+        return Err(DxError::Internal {
+            message: "ImageMagick PNG optimize command failed".to_string(),
+        });
+    }
+
+    Ok(ToolOutput::success_with_path("PNG optimized", output_path))
+}
+
+/// Format file size for display.
+fn format_size(bytes: u64) -> String {
+    if bytes >= 1024 * 1024 {
+        format!("{:.2}MB", bytes as f64 / (1024.0 * 1024.0))
+    } else if bytes >= 1024 {
+        format!("{:.2}KB", bytes as f64 / 1024.0)
+    } else {
+        format!("{}B", bytes)
+    }
 }
 
 #[cfg(test)]
@@ -262,18 +241,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_compression_options() {
-        let opts = CompressionOptions::with_quality(80);
-        assert_eq!(opts.jpeg_quality, 80);
-        assert_eq!(opts.webp_quality, 80);
+    fn test_quality_values() {
+        assert_eq!(CompressionQuality::Low.to_value(), 30);
+        assert_eq!(CompressionQuality::Medium.to_value(), 60);
+        assert_eq!(CompressionQuality::High.to_value(), 80);
+        assert_eq!(CompressionQuality::Custom(50).to_value(), 50);
     }
 
     #[test]
-    fn test_quality_clamping() {
-        let opts = CompressionOptions::with_quality(150);
-        assert_eq!(opts.jpeg_quality, 100);
-
-        let opts = CompressionOptions::with_quality(0);
-        assert_eq!(opts.jpeg_quality, 1);
+    fn test_format_size() {
+        assert_eq!(format_size(500), "500B");
+        assert_eq!(format_size(1536), "1.50KB");
+        assert_eq!(format_size(1572864), "1.50MB");
     }
 }

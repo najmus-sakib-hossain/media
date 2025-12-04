@@ -291,7 +291,7 @@ pub fn create_contact_sheet<P: AsRef<Path>>(
 
     let total_frames = columns * rows;
     let duration = get_video_duration(input_path)?;
-    let interval = duration / (total_frames + 1) as f64;
+    let _interval = duration / (total_frames + 1) as f64;
 
     // Use FFmpeg's tile filter
     let filter = format!(
@@ -374,7 +374,7 @@ pub fn extract_first_frame<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOu
 pub fn extract_middle_frame<P: AsRef<Path>>(input: P, output: P) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let duration = get_video_duration(input_path)?;
-    extract_thumbnail(input_path, output, duration / 2.0)
+    extract_thumbnail(input_path, output.as_ref(), duration / 2.0)
 }
 
 #[cfg(test)]

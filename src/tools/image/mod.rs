@@ -1,6 +1,6 @@
 //! Image processing tools.
 //!
-//! This module provides 10 image manipulation tools:
+//! This module provides 10 image manipulation tools using ImageMagick:
 //! 1. Format Converter - Convert between image formats
 //! 2. Smart Resizer - Resize with aspect ratio options
 //! 3. Image Compressor - Reduce file size with quality control
@@ -12,16 +12,16 @@
 //! 9. OCR (Text Extractor) - Extract text from images
 //! 10. Icon Generator - Generate favicon and app icons
 
-mod compressor;
-mod converter;
-mod exif;
-mod filters;
-mod icons;
-mod ocr;
-mod palette;
-mod qrcode;
-mod resizer;
-mod watermark;
+pub mod compressor;
+pub mod converter;
+pub mod exif;
+pub mod filters;
+pub mod icons;
+pub mod ocr;
+pub mod palette;
+pub mod qrcode;
+pub mod resizer;
+pub mod watermark;
 
 pub use compressor::*;
 pub use converter::*;
@@ -47,13 +47,8 @@ impl ImageTools {
     }
 
     /// Convert image format.
-    pub fn convert<P: AsRef<Path>>(
-        &self,
-        input: P,
-        output: P,
-        format: ImageFormat,
-    ) -> Result<super::ToolOutput> {
-        converter::convert_image(input, output, format)
+    pub fn convert<P: AsRef<Path>>(&self, input: P, output: P) -> Result<super::ToolOutput> {
+        converter::convert(input, output)
     }
 
     /// Resize image.
@@ -61,9 +56,10 @@ impl ImageTools {
         &self,
         input: P,
         output: P,
-        options: ResizeOptions,
+        width: u32,
+        height: u32,
     ) -> Result<super::ToolOutput> {
-        resizer::resize_image(input, output, options)
+        resizer::resize(input, output, width, height)
     }
 
     /// Compress image.
@@ -73,22 +69,23 @@ impl ImageTools {
         output: P,
         quality: u8,
     ) -> Result<super::ToolOutput> {
-        compressor::compress_image(input, output, quality)
+        compressor::compress(input, output, quality)
     }
 
-    /// Add watermark to image.
-    pub fn watermark<P: AsRef<Path>>(
+    /// Add text watermark to image.
+    pub fn add_watermark<P: AsRef<Path>>(
         &self,
         input: P,
         output: P,
-        options: WatermarkOptions,
+        text: &str,
+        position: WatermarkPosition,
     ) -> Result<super::ToolOutput> {
-        watermark::add_watermark(input, output, options)
+        watermark::add_text_watermark(input, output, text, position)
     }
 
     /// Remove EXIF data from image.
-    pub fn wipe_exif<P: AsRef<Path>>(&self, input: P, output: P) -> Result<super::ToolOutput> {
-        exif::wipe_exif(input, output)
+    pub fn strip_metadata<P: AsRef<Path>>(&self, input: P, output: P) -> Result<super::ToolOutput> {
+        exif::strip_metadata(input, output)
     }
 
     /// Generate QR code.
@@ -101,14 +98,18 @@ impl ImageTools {
         qrcode::generate_qr(data, output, size)
     }
 
-    /// Read QR code from image.
-    pub fn read_qr<P: AsRef<Path>>(&self, input: P) -> Result<String> {
-        qrcode::read_qr(input)
+    /// Decode QR code from image.
+    pub fn decode_qr<P: AsRef<Path>>(&self, input: P) -> Result<super::ToolOutput> {
+        qrcode::decode_qr(input)
     }
 
     /// Extract color palette from image.
-    pub fn extract_palette<P: AsRef<Path>>(&self, input: P, count: usize) -> Result<Vec<String>> {
-        palette::extract_palette(input, count)
+    pub fn extract_palette<P: AsRef<Path>>(
+        &self,
+        input: P,
+        num_colors: u32,
+    ) -> Result<super::ToolOutput> {
+        palette::extract_palette(input, num_colors)
     }
 
     /// Apply filter to image.
@@ -116,14 +117,14 @@ impl ImageTools {
         &self,
         input: P,
         output: P,
-        filter: ImageFilter,
+        filter: Filter,
     ) -> Result<super::ToolOutput> {
         filters::apply_filter(input, output, filter)
     }
 
     /// Extract text from image (OCR).
-    pub fn extract_text<P: AsRef<Path>>(&self, input: P) -> Result<String> {
-        ocr::extract_text(input)
+    pub fn extract_text<P: AsRef<Path>>(&self, input: P) -> Result<super::ToolOutput> {
+        ocr::extract_text(input, OcrOptions::default())
     }
 
     /// Generate icons from image.
@@ -132,7 +133,7 @@ impl ImageTools {
         input: P,
         output_dir: P,
     ) -> Result<super::ToolOutput> {
-        icons::generate_icons(input, output_dir)
+        icons::generate_all_icons(input, output_dir)
     }
 }
 

@@ -270,7 +270,7 @@ pub fn append_to_tar<P: AsRef<Path>>(archive: P, files: &[P]) -> Result<ToolOutp
 }
 
 /// Extract specific files from TAR.
-pub fn extract_files<P: AsRef<Path>>(
+pub fn tar_extract_files<P: AsRef<Path>>(
     archive: P,
     files: &[&str],
     output_dir: P,

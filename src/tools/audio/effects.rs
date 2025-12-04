@@ -62,7 +62,7 @@ impl AudioEffect {
             AudioEffect::Echo { delay, decay } => {
                 format!("aecho=0.8:0.88:{}:{}", (delay * 1000.0) as u32, decay)
             }
-            AudioEffect::Reverb { room_size, damping } => {
+            AudioEffect::Reverb { room_size: _, damping: _ } => {
                 format!("aecho=0.8:0.9:1000|1800:0.3|0.25,highpass=f=200")
             }
             AudioEffect::LowPass(freq) => format!("lowpass=f={}", freq),
@@ -78,8 +78,8 @@ impl AudioEffect {
                 let filters: Vec<String> = bands.iter()
                     .take(10)
                     .enumerate()
-                    .filter(|(_, &gain)| gain.abs() > 0.1)
-                    .map(|(i, &gain)| format!("equalizer=f={}:width_type=o:width=2:g={}", freqs[i], gain))
+                    .filter(|&(_, gain)| gain.abs() > 0.1)
+                    .map(|(i, gain)| format!("equalizer=f={}:width_type=o:width=2:g={}", freqs[i], gain))
                     .collect();
                 filters.join(",")
             }

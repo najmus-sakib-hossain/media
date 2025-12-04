@@ -258,7 +258,7 @@ pub fn test_rar_with_password<P: AsRef<Path>>(
 }
 
 /// Extract specific files from RAR.
-pub fn extract_files<P: AsRef<Path>>(
+pub fn rar_extract_files<P: AsRef<Path>>(
     archive: P,
     files: &[&str],
     output_dir: P,
@@ -329,7 +329,7 @@ pub fn extract_files<P: AsRef<Path>>(
 }
 
 /// Check if RAR archive is encrypted.
-pub fn is_encrypted<P: AsRef<Path>>(input: P) -> Result<bool> {
+pub fn rar_is_encrypted<P: AsRef<Path>>(input: P) -> Result<bool> {
     let input_path = input.as_ref();
 
     if !input_path.exists() {

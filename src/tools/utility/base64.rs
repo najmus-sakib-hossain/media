@@ -184,7 +184,7 @@ fn base64_encode_impl(data: &[u8]) -> String {
         let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
         let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
 
-        result.push(BASE64_ALPHABET[(b0 >> 2)] as char);
+        result.push(BASE64_ALPHABET[b0 >> 2] as char);
         result.push(BASE64_ALPHABET[((b0 & 0x03) << 4) | (b1 >> 4)] as char);
 
         if chunk.len() > 1 {

@@ -1,150 +1,115 @@
 //! Image resizing tool.
 //!
-//! Provides smart resizing with aspect ratio preservation options.
+//! Resize images using ImageMagick.
 
 use crate::error::{DxError, Result};
 use crate::tools::ToolOutput;
-use image::imageops::FilterType;
 use std::path::Path;
+use std::process::Command;
 
-/// Resize operation mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ResizeMode {
-    /// Resize to exact dimensions (may distort).
-    Exact,
-    /// Fit within dimensions preserving aspect ratio.
-    Fit,
-    /// Fill dimensions, cropping if necessary.
-    Fill,
-    /// Scale by percentage.
-    Scale,
-}
-
-/// Resize filter algorithm.
+/// Resize filter/algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ResizeFilter {
-    /// Nearest neighbor (fastest, lowest quality).
+    /// Nearest neighbor (fast, pixelated).
     Nearest,
-    /// Triangle/bilinear filtering.
-    Triangle,
-    /// Catmull-Rom cubic filtering.
-    CatmullRom,
-    /// Gaussian filtering.
-    Gaussian,
-    /// Lanczos3 filtering (best quality).
+    /// Bilinear interpolation.
+    Bilinear,
+    /// Bicubic interpolation.
+    Bicubic,
+    /// Lanczos filter (high quality).
     #[default]
-    Lanczos3,
+    Lanczos,
+    /// Mitchell filter.
+    Mitchell,
 }
 
 impl ResizeFilter {
-    fn to_filter_type(&self) -> FilterType {
+    fn to_arg(&self) -> &str {
         match self {
-            Self::Nearest => FilterType::Nearest,
-            Self::Triangle => FilterType::Triangle,
-            Self::CatmullRom => FilterType::CatmullRom,
-            Self::Gaussian => FilterType::Gaussian,
-            Self::Lanczos3 => FilterType::Lanczos3,
+            Self::Nearest => "Point",
+            Self::Bilinear => "Bilinear",
+            Self::Bicubic => "Bicubic",
+            Self::Lanczos => "Lanczos",
+            Self::Mitchell => "Mitchell",
         }
     }
 }
 
-/// Options for resizing operations.
+/// Resize options.
 #[derive(Debug, Clone)]
 pub struct ResizeOptions {
-    /// Target width.
-    pub width: u32,
-    /// Target height.
-    pub height: u32,
-    /// Resize mode.
-    pub mode: ResizeMode,
-    /// Filter algorithm.
+    /// Target width (None to maintain aspect ratio).
+    pub width: Option<u32>,
+    /// Target height (None to maintain aspect ratio).
+    pub height: Option<u32>,
+    /// Resize filter.
     pub filter: ResizeFilter,
-    /// Scale percentage (only used with ResizeMode::Scale).
-    pub scale_percent: Option<f32>,
-}
-
-impl ResizeOptions {
-    /// Create options for exact resize.
-    pub fn exact(width: u32, height: u32) -> Self {
-        Self {
-            width,
-            height,
-            mode: ResizeMode::Exact,
-            filter: ResizeFilter::default(),
-            scale_percent: None,
-        }
-    }
-
-    /// Create options for fit resize (preserve aspect ratio).
-    pub fn fit(max_width: u32, max_height: u32) -> Self {
-        Self {
-            width: max_width,
-            height: max_height,
-            mode: ResizeMode::Fit,
-            filter: ResizeFilter::default(),
-            scale_percent: None,
-        }
-    }
-
-    /// Create options for fill resize (crop to fit).
-    pub fn fill(width: u32, height: u32) -> Self {
-        Self {
-            width,
-            height,
-            mode: ResizeMode::Fill,
-            filter: ResizeFilter::default(),
-            scale_percent: None,
-        }
-    }
-
-    /// Create options for scale by percentage.
-    pub fn scale(percent: f32) -> Self {
-        Self {
-            width: 0,
-            height: 0,
-            mode: ResizeMode::Scale,
-            filter: ResizeFilter::default(),
-            scale_percent: Some(percent),
-        }
-    }
-
-    /// Set the filter algorithm.
-    pub fn with_filter(mut self, filter: ResizeFilter) -> Self {
-        self.filter = filter;
-        self
-    }
+    /// Maintain aspect ratio.
+    pub maintain_aspect: bool,
+    /// Only shrink if larger.
+    pub only_shrink: bool,
 }
 
 impl Default for ResizeOptions {
     fn default() -> Self {
         Self {
-            width: 800,
-            height: 600,
-            mode: ResizeMode::Fit,
+            width: None,
+            height: None,
             filter: ResizeFilter::default(),
-            scale_percent: None,
+            maintain_aspect: true,
+            only_shrink: false,
         }
     }
 }
 
-/// Resize an image with the given options.
+/// Resize an image to specific dimensions.
 ///
 /// # Arguments
 /// * `input` - Path to the input image
-/// * `output` - Path for the output image
-/// * `options` - Resize options
+/// * `output` - Path to the output image
+/// * `width` - Target width
+/// * `height` - Target height
 ///
 /// # Example
 /// ```no_run
-/// use dx_media::tools::image::{resize_image, ResizeOptions};
+/// use dx_media::tools::image::resizer::resize;
 ///
-/// // Resize to fit within 800x600 preserving aspect ratio
-/// resize_image("input.jpg", "output.jpg", ResizeOptions::fit(800, 600)).unwrap();
-///
-/// // Scale to 50%
-/// resize_image("input.jpg", "small.jpg", ResizeOptions::scale(50.0)).unwrap();
+/// resize("large.jpg", "small.jpg", 800, 600).unwrap();
 /// ```
-pub fn resize_image<P: AsRef<Path>>(
+pub fn resize<P: AsRef<Path>>(input: P, output: P, width: u32, height: u32) -> Result<ToolOutput> {
+    let input_path = input.as_ref();
+    let output_path = output.as_ref();
+
+    let size = format!("{}x{}", width, height);
+
+    let status = Command::new("magick")
+        .args([
+            "convert",
+            input_path.to_str().unwrap_or(""),
+            "-resize",
+            &size,
+            output_path.to_str().unwrap_or(""),
+        ])
+        .status()
+        .map_err(|e| DxError::Internal {
+            message: format!("Failed to execute ImageMagick: {}", e),
+        })?;
+
+    if !status.success() {
+        return Err(DxError::Internal {
+            message: "ImageMagick resize command failed".to_string(),
+        });
+    }
+
+    Ok(
+        ToolOutput::success_with_path(format!("Resized to {}x{}", width, height), output_path)
+            .with_metadata("width", width.to_string())
+            .with_metadata("height", height.to_string()),
+    )
+}
+
+/// Resize with options.
+pub fn resize_with_options<P: AsRef<Path>>(
     input: P,
     output: P,
     options: ResizeOptions,
@@ -152,122 +117,165 @@ pub fn resize_image<P: AsRef<Path>>(
     let input_path = input.as_ref();
     let output_path = output.as_ref();
 
-    let img = image::open(input_path).map_err(|e| DxError::FileIo {
-        path: input_path.to_path_buf(),
-        message: format!("Failed to open image: {}", e),
-        source: None,
-    })?;
+    let mut args = vec![
+        "convert".to_string(),
+        input_path.to_str().unwrap_or("").to_string(),
+        "-filter".to_string(),
+        options.filter.to_arg().to_string(),
+    ];
 
-    let (orig_width, orig_height) = (img.width(), img.height());
-
-    let resized = match options.mode {
-        ResizeMode::Exact => img.resize_exact(
-            options.width,
-            options.height,
-            options.filter.to_filter_type(),
-        ),
-        ResizeMode::Fit => img.resize(
-            options.width,
-            options.height,
-            options.filter.to_filter_type(),
-        ),
-        ResizeMode::Fill => img.resize_to_fill(
-            options.width,
-            options.height,
-            options.filter.to_filter_type(),
-        ),
-        ResizeMode::Scale => {
-            let scale = options.scale_percent.unwrap_or(100.0) / 100.0;
-            let new_width = (orig_width as f32 * scale) as u32;
-            let new_height = (orig_height as f32 * scale) as u32;
-            img.resize_exact(new_width, new_height, options.filter.to_filter_type())
+    let size = match (options.width, options.height) {
+        (Some(w), Some(h)) => {
+            if options.maintain_aspect {
+                format!("{}x{}", w, h)
+            } else {
+                format!("{}x{}!", w, h)
+            }
+        }
+        (Some(w), None) => format!("{}x", w),
+        (None, Some(h)) => format!("x{}", h),
+        (None, None) => {
+            return Err(DxError::Config {
+                message: "Either width or height must be specified".to_string(),
+                source: None,
+            });
         }
     };
 
-    resized.save(output_path).map_err(|e| DxError::FileIo {
-        path: output_path.to_path_buf(),
-        message: format!("Failed to save resized image: {}", e),
-        source: None,
-    })?;
+    let resize_flag = if options.only_shrink {
+        "-resize"
+    } else {
+        "-resize"
+    };
+    let size_arg = if options.only_shrink {
+        format!("{}\\>", size)
+    } else {
+        size
+    };
 
-    let (new_width, new_height) = (resized.width(), resized.height());
+    args.push(resize_flag.to_string());
+    args.push(size_arg);
+    args.push(output_path.to_str().unwrap_or("").to_string());
 
-    Ok(ToolOutput::success_with_path(
-        format!(
-            "Resized {}x{} -> {}x{}",
-            orig_width, orig_height, new_width, new_height
-        ),
-        output_path,
-    )
-    .with_metadata("original_width", orig_width.to_string())
-    .with_metadata("original_height", orig_height.to_string())
-    .with_metadata("new_width", new_width.to_string())
-    .with_metadata("new_height", new_height.to_string()))
+    let status = Command::new("magick")
+        .args(&args)
+        .status()
+        .map_err(|e| DxError::Internal {
+            message: format!("Failed to execute ImageMagick: {}", e),
+        })?;
+
+    if !status.success() {
+        return Err(DxError::Internal {
+            message: "ImageMagick resize command failed".to_string(),
+        });
+    }
+
+    Ok(ToolOutput::success_with_path("Image resized", output_path))
 }
 
-/// Create a thumbnail of an image.
-///
-/// # Arguments
-/// * `input` - Path to the input image
-/// * `output` - Path for the thumbnail
-/// * `size` - Maximum dimension for thumbnail (width or height)
-pub fn create_thumbnail<P: AsRef<Path>>(input: P, output: P, size: u32) -> Result<ToolOutput> {
+/// Resize to fit within maximum dimensions.
+pub fn resize_fit<P: AsRef<Path>>(
+    input: P,
+    output: P,
+    max_width: u32,
+    max_height: u32,
+) -> Result<ToolOutput> {
     let input_path = input.as_ref();
     let output_path = output.as_ref();
 
-    let img = image::open(input_path).map_err(|e| DxError::FileIo {
-        path: input_path.to_path_buf(),
-        message: format!("Failed to open image: {}", e),
-        source: None,
-    })?;
+    let size = format!("{}x{}", max_width, max_height);
 
-    let thumbnail = img.thumbnail(size, size);
+    let status = Command::new("magick")
+        .args([
+            "convert",
+            input_path.to_str().unwrap_or(""),
+            "-resize",
+            &size,
+            output_path.to_str().unwrap_or(""),
+        ])
+        .status()
+        .map_err(|e| DxError::Internal {
+            message: format!("Failed to execute ImageMagick: {}", e),
+        })?;
 
-    thumbnail.save(output_path).map_err(|e| DxError::FileIo {
-        path: output_path.to_path_buf(),
-        message: format!("Failed to save thumbnail: {}", e),
-        source: None,
-    })?;
+    if !status.success() {
+        return Err(DxError::Internal {
+            message: "ImageMagick resize command failed".to_string(),
+        });
+    }
 
     Ok(ToolOutput::success_with_path(
-        format!(
-            "Created {}x{} thumbnail",
-            thumbnail.width(),
-            thumbnail.height()
-        ),
+        format!("Resized to fit within {}x{}", max_width, max_height),
         output_path,
     ))
 }
 
-/// Batch resize multiple images.
-pub fn batch_resize<P: AsRef<Path>>(
-    inputs: &[P],
-    output_dir: P,
-    options: ResizeOptions,
-) -> Result<ToolOutput> {
-    let output_dir = output_dir.as_ref();
-    std::fs::create_dir_all(output_dir).map_err(|e| DxError::FileIo {
-        path: output_dir.to_path_buf(),
-        message: format!("Failed to create output directory: {}", e),
-        source: None,
-    })?;
+/// Scale image by percentage.
+pub fn scale<P: AsRef<Path>>(input: P, output: P, percentage: u32) -> Result<ToolOutput> {
+    let input_path = input.as_ref();
+    let output_path = output.as_ref();
 
-    let mut resized = Vec::new();
+    let scale_arg = format!("{}%", percentage);
 
-    for input in inputs {
-        let input_path = input.as_ref();
-        let file_name = input_path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("output.jpg");
-        let output_path = output_dir.join(file_name);
+    let status = Command::new("magick")
+        .args([
+            "convert",
+            input_path.to_str().unwrap_or(""),
+            "-resize",
+            &scale_arg,
+            output_path.to_str().unwrap_or(""),
+        ])
+        .status()
+        .map_err(|e| DxError::Internal {
+            message: format!("Failed to execute ImageMagick: {}", e),
+        })?;
 
-        if resize_image(input_path, &output_path, options.clone()).is_ok() {
-            resized.push(output_path);
-        }
+    if !status.success() {
+        return Err(DxError::Internal {
+            message: "ImageMagick scale command failed".to_string(),
+        });
     }
 
-    Ok(ToolOutput::success(format!("Resized {} images", resized.len())).with_paths(resized))
+    Ok(ToolOutput::success_with_path(
+        format!("Scaled to {}%", percentage),
+        output_path,
+    ))
+}
+
+/// Create thumbnail.
+pub fn thumbnail<P: AsRef<Path>>(input: P, output: P, size: u32) -> Result<ToolOutput> {
+    let input_path = input.as_ref();
+    let output_path = output.as_ref();
+
+    let size_arg = format!("{}x{}", size, size);
+
+    let status = Command::new("magick")
+        .args([
+            "convert",
+            input_path.to_str().unwrap_or(""),
+            "-thumbnail",
+            &size_arg,
+            "-gravity",
+            "center",
+            "-extent",
+            &size_arg,
+            output_path.to_str().unwrap_or(""),
+        ])
+        .status()
+        .map_err(|e| DxError::Internal {
+            message: format!("Failed to execute ImageMagick: {}", e),
+        })?;
+
+    if !status.success() {
+        return Err(DxError::Internal {
+            message: "ImageMagick thumbnail command failed".to_string(),
+        });
+    }
+
+    Ok(ToolOutput::success_with_path(
+        format!("Created {}x{} thumbnail", size, size),
+        output_path,
+    ))
 }
 
 #[cfg(test)]
@@ -275,17 +283,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_resize_options() {
-        let opts = ResizeOptions::fit(800, 600);
-        assert_eq!(opts.width, 800);
-        assert_eq!(opts.height, 600);
-        assert_eq!(opts.mode, ResizeMode::Fit);
-    }
-
-    #[test]
-    fn test_scale_options() {
-        let opts = ResizeOptions::scale(50.0);
-        assert_eq!(opts.mode, ResizeMode::Scale);
-        assert_eq!(opts.scale_percent, Some(50.0));
+    fn test_filter_arg() {
+        assert_eq!(ResizeFilter::Lanczos.to_arg(), "Lanczos");
+        assert_eq!(ResizeFilter::Nearest.to_arg(), "Point");
     }
 }

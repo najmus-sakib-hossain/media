@@ -163,12 +163,12 @@ pub fn merge_directory<P: AsRef<Path>>(input_dir: P, output: P) -> Result<ToolOu
     }
 
     let file_refs: Vec<&Path> = pdf_files.iter().map(|p| p.as_path()).collect();
-    merge_pdfs(&file_refs, output)
+    merge_pdfs(&file_refs, output.as_ref())
 }
 
 /// Append one PDF to another.
 pub fn append_pdf<P: AsRef<Path>>(base: P, append: P, output: P) -> Result<ToolOutput> {
-    merge_pdfs(&[base.as_ref(), append.as_ref()], output)
+    merge_pdfs(&[base.as_ref(), append.as_ref()], output.as_ref())
 }
 
 /// Interleave pages from two PDFs (useful for double-sided scanning).

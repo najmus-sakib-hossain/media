@@ -149,7 +149,7 @@ pub fn cut_segment<P: AsRef<Path>>(
         });
     }
 
-    let total_duration = get_audio_duration(input_path)?;
+    let _total_duration = get_audio_duration(input_path)?;
 
     // Use complex filter to concatenate before and after segments
     let filter = format!(
