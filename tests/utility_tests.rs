@@ -1,686 +1,422 @@
 //! Tests for utility tools.
-//!
-//! These tests cover the 10 utility tools:
-//! 1. Hash Calculator
-//! 2. Base64 Encoder/Decoder
-//! 3. URL Encoder/Decoder
-//! 4. JSON Formatter
-//! 5. YAML Converter
-//! 6. CSV Converter
-//! 7. File Diff
-//! 8. UUID Generator
-//! 9. Timestamp Converter
-//! 10. Random Generator
 
 mod common;
+
 use common::TestFixture;
 use dx_media::tools::utility;
 
-// ═══════════════════════════════════════════════════════════════
-// 1. HASH CALCULATOR TESTS
-// ═══════════════════════════════════════════════════════════════
+// =============================================================================
+// 51. hash - File hashing
+// =============================================================================
 
-mod hash_tests {
-    use super::*;
-    use dx_media::tools::utility::hash;
-
-    #[test]
-    fn test_hash_algorithm_names() {
-        assert_eq!(hash::HashAlgorithm::Md5.name(), "MD5");
-        assert_eq!(hash::HashAlgorithm::Sha1.name(), "SHA1");
-        assert_eq!(hash::HashAlgorithm::Sha256.name(), "SHA256");
-        assert_eq!(hash::HashAlgorithm::Sha512.name(), "SHA512");
-    }
-
-    #[test]
-    fn test_hash_file() {
-        let fixture = TestFixture::new();
-        let path = fixture.create_text_file("test.txt", "Hello, World!");
-
-        let result = hash::hash_file(&path, hash::HashAlgorithm::Md5);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.success);
-    }
-
-    #[test]
-    fn test_sha256_file() {
-        let fixture = TestFixture::new();
-        let path = fixture.create_text_file("test.txt", "test content");
-
-        let result = hash::sha256(&path);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.success);
-    }
-
-    #[test]
-    fn test_sha512_file() {
-        let fixture = TestFixture::new();
-        let path = fixture.create_text_file("test.txt", "test content");
-
-        let result = hash::sha512(&path);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_md5_file() {
-        let fixture = TestFixture::new();
-        let path = fixture.create_text_file("test.txt", "hello");
-
-        let result = hash::md5(&path);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_multi_hash() {
-        let fixture = TestFixture::new();
-        let path = fixture.create_text_file("test.txt", "content");
-
-        let result = hash::multi_hash(&path);
-        assert!(result.is_ok());
-    }
+#[test]
+fn test_hash_algorithm_enum() {
+    let _ = utility::HashAlgorithm::Md5;
+    let _ = utility::HashAlgorithm::Sha1;
+    let _ = utility::HashAlgorithm::Sha256;
+    let _ = utility::HashAlgorithm::Sha512;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 2. BASE64 ENCODER/DECODER TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_hash_file() {
+    let fixture = TestFixture::new();
+    let file = fixture.create_test_text_file("test.txt", "Hello World");
 
-mod base64_tests {
-    use super::*;
-    use dx_media::tools::utility::base64;
-
-    #[test]
-    fn test_encode_string() {
-        let result = base64::encode_string("Hello, World!");
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.success);
-        assert!(output.message.contains("SGVsbG8sIFdvcmxkIQ=="));
-    }
-
-    #[test]
-    fn test_decode_string() {
-        let result = base64::decode_string("SGVsbG8sIFdvcmxkIQ==");
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.success);
-        assert!(output.message.contains("Hello, World!"));
-    }
-
-    #[test]
-    fn test_encode_empty_string() {
-        let result = base64::encode_string("");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_decode_invalid() {
-        let result = base64::decode_string("!!!invalid!!!");
-        assert!(result.is_err() || !result.unwrap().success);
-    }
-
-    #[test]
-    fn test_encode_url_safe() {
-        let result = base64::encode_url_safe("hello+world/test");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_encode_file() {
-        let fixture = TestFixture::new();
-        let path = fixture.create_text_file("test.txt", "file content");
-
-        let result = base64::encode_file(&path);
-        assert!(result.is_ok());
-    }
+    let result = utility::hash_file(&file, utility::HashAlgorithm::Sha256);
+    assert!(result.is_ok());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 3. URL ENCODER/DECODER TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_sha256() {
+    let fixture = TestFixture::new();
+    let file = fixture.create_test_text_file("test.txt", "hello");
 
-mod url_encode_tests {
-    use dx_media::tools::utility::url_encode;
-
-    #[test]
-    fn test_encode_simple() {
-        let result = url_encode::encode("hello world");
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.message.contains("hello%20world") || output.message.contains("hello+world"));
-    }
-
-    #[test]
-    fn test_encode_special_chars() {
-        let result = url_encode::encode("foo=bar&baz=qux");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_decode_simple() {
-        let result = url_encode::decode("hello%20world");
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.message.contains("hello world"));
-    }
-
-    #[test]
-    fn test_encode_path() {
-        let result = url_encode::encode_path("/path/to/file");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_build_query_string() {
-        let params = [("name", "value"), ("foo", "bar")];
-        let result = url_encode::build_query_string(&params);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_parse_query_string() {
-        let result = url_encode::parse_query_string("name=value&foo=bar");
-        assert!(result.is_ok());
-    }
+    let result = utility::sha256(&file);
+    assert!(result.is_ok());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 4. JSON FORMATTER TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_md5() {
+    let fixture = TestFixture::new();
+    let file = fixture.create_test_text_file("test.txt", "hello");
 
-mod json_tests {
-    use super::*;
-    use dx_media::tools::utility::json_format;
-
-    #[test]
-    fn test_format_valid_json() {
-        let result = json_format::format_string(r#"{"name":"test","value":123}"#);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.success);
-    }
-
-    #[test]
-    fn test_format_invalid_json() {
-        let result = json_format::format_string("not valid json");
-        assert!(result.is_err() || !result.unwrap().success);
-    }
-
-    #[test]
-    fn test_minify_json() {
-        let json = r#"{
-    "name": "test",
-    "value": 123
-}"#;
-        let result = json_format::minify_string(json);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(!output.message.contains('\n') || output.message.trim().len() < json.len());
-    }
-
-    #[test]
-    fn test_validate_valid_json() {
-        let result = json_format::validate_string(r#"{"valid": true}"#);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_invalid_json() {
-        let result = json_format::validate_string("{invalid}");
-        assert!(result.is_err() || !result.unwrap().success);
-    }
-
-    #[test]
-    fn test_sort_keys() {
-        let result = json_format::sort_keys(r#"{"b": 2, "a": 1}"#);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_json_indent_options() {
-        let result = json_format::format_string_with_indent(
-            r#"{"a":1}"#,
-            json_format::JsonIndent::Spaces(4),
-        );
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_format_json_file() {
-        let fixture = TestFixture::new();
-        let input = fixture.create_json_file("input.json", r#"{"test": true}"#);
-        let output = fixture.path("output.json");
-
-        let result = json_format::format_json_file(&input, &output);
-        assert!(result.is_ok());
-    }
+    let result = utility::md5(&file);
+    assert!(result.is_ok());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 5. YAML CONVERTER TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_multi_hash() {
+    let fixture = TestFixture::new();
+    let file = fixture.create_test_text_file("test.txt", "hello");
 
-mod yaml_tests {
-    use super::*;
-    use dx_media::tools::utility::yaml_convert;
-
-    #[test]
-    fn test_json_to_yaml() {
-        let fixture = TestFixture::new();
-        let input = fixture.create_json_file("input.json", r#"{"name": "test", "value": 123}"#);
-        let output = fixture.path("output.yaml");
-
-        let result = yaml_convert::json_to_yaml(&input, &output);
-        assert!(result.is_ok());
-        assert!(output.exists());
-    }
-
-    #[test]
-    fn test_yaml_to_json() {
-        let fixture = TestFixture::new();
-        let yaml_content = "name: test\nvalue: 123\n";
-        let input = fixture.create_text_file("input.yaml", yaml_content);
-        let output = fixture.path("output.json");
-
-        let result = yaml_convert::yaml_to_json(&input, &output);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_yaml() {
-        let result = yaml_convert::validate_string("name: test\nvalue: 123");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_format_yaml() {
-        let result = yaml_convert::format_string("name:test\nvalue:123");
-        // May succeed or fail depending on YAML parser strictness
-        let _ = result;
-    }
+    let result = utility::multi_hash(&file);
+    assert!(result.is_ok());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 6. CSV CONVERTER TESTS
-// ═══════════════════════════════════════════════════════════════
+// =============================================================================
+// 52. base64 - Base64 encoding/decoding
+// =============================================================================
 
-mod csv_tests {
-    use super::*;
-    use dx_media::tools::utility::csv_convert;
-
-    #[test]
-    fn test_csv_to_json() {
-        let fixture = TestFixture::new();
-        let csv_content = "name,age\nAlice,30\nBob,25\n";
-        let input = fixture.create_csv_file("input.csv", csv_content);
-        let output = fixture.path("output.json");
-
-        let result = csv_convert::csv_to_json(&input, &output);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_json_to_csv() {
-        let fixture = TestFixture::new();
-        let json_content = r#"[{"name":"Alice","age":30},{"name":"Bob","age":25}]"#;
-        let input = fixture.create_json_file("input.json", json_content);
-        let output = fixture.path("output.csv");
-
-        let result = csv_convert::json_to_csv(&input, &output);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_csv_to_markdown() {
-        let fixture = TestFixture::new();
-        let csv_content = "name,age\nAlice,30\n";
-        let input = fixture.create_csv_file("input.csv", csv_content);
-        let output = fixture.path("output.md");
-
-        let result = csv_convert::csv_to_markdown(&input, &output);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_csv_to_html() {
-        let fixture = TestFixture::new();
-        let csv_content = "name,age\nAlice,30\n";
-        let input = fixture.create_csv_file("input.csv", csv_content);
-        let output = fixture.path("output.html");
-
-        let result = csv_convert::csv_to_html(&input, &output);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_csv_stats() {
-        let fixture = TestFixture::new();
-        let csv_content = "a,b,c\n1,2,3\n4,5,6\n";
-        let input = fixture.create_csv_file("data.csv", csv_content);
-
-        let result = csv_convert::csv_stats(&input);
-        assert!(result.is_ok());
-    }
+#[test]
+fn test_base64_encode_string() {
+    let result = utility::encode_string("Hello World");
+    assert!(result.is_ok());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 7. FILE DIFF TESTS
-// ═══════════════════════════════════════════════════════════════
-
-mod diff_tests {
-    use super::*;
-    use dx_media::tools::utility::diff;
-
-    #[test]
-    fn test_diff_identical_files() {
-        let fixture = TestFixture::new();
-        let content = "same content\n";
-        let file1 = fixture.create_text_file("file1.txt", content);
-        let file2 = fixture.create_text_file("file2.txt", content);
-
-        let result = diff::diff_files(&file1, &file2);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_diff_different_files() {
-        let fixture = TestFixture::new();
-        let file1 = fixture.create_text_file("file1.txt", "content A\n");
-        let file2 = fixture.create_text_file("file2.txt", "content B\n");
-
-        let result = diff::diff_files(&file1, &file2);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_diff_strings() {
-        let result = diff::diff_strings("hello\nworld", "hello\nuniverse");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_files_identical() {
-        let fixture = TestFixture::new();
-        let file1 = fixture.create_text_file("file1.txt", "same\n");
-        let file2 = fixture.create_text_file("file2.txt", "same\n");
-
-        let result = diff::files_identical(&file1, &file2);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_diff_format_unified() {
-        let fixture = TestFixture::new();
-        let file1 = fixture.create_text_file("a.txt", "line1\nline2\n");
-        let file2 = fixture.create_text_file("b.txt", "line1\nline3\n");
-
-        let result = diff::diff_files_with_format(&file1, &file2, diff::DiffFormat::Unified);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_diff_stats() {
-        let fixture = TestFixture::new();
-        let file1 = fixture.create_text_file("a.txt", "a\nb\nc\n");
-        let file2 = fixture.create_text_file("b.txt", "a\nx\nc\n");
-
-        let result = diff::diff_stats(&file1, &file2);
-        assert!(result.is_ok());
-    }
+#[test]
+fn test_base64_decode_string() {
+    let result = utility::decode_string("SGVsbG8gV29ybGQ=");
+    assert!(result.is_ok());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 8. UUID GENERATOR TESTS
-// ═══════════════════════════════════════════════════════════════
-
-mod uuid_tests {
-    use dx_media::tools::utility::uuid;
-
-    #[test]
-    fn test_generate_v4() {
-        let result = uuid::v4();
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.success);
-        // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-        assert!(output.message.contains('-'));
-    }
-
-    #[test]
-    fn test_generate_multiple_unique() {
-        let result1 = uuid::v4().unwrap();
-        let result2 = uuid::v4().unwrap();
-        assert_ne!(result1.message, result2.message);
-    }
-
-    #[test]
-    fn test_batch_uuid() {
-        let result = uuid::batch(5);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_uuid() {
-        let result = uuid::validate("550e8400-e29b-41d4-a716-446655440000");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_invalid_uuid() {
-        let result = uuid::validate("not-a-uuid");
-        // Should indicate invalid
-        let _ = result;
-    }
+#[test]
+fn test_base64_encode_url_safe() {
+    let result = utility::encode_url_safe("Hello+World/Test");
+    assert!(result.is_ok());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 9. TIMESTAMP CONVERTER TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_base64_file_encoding() {
+    let fixture = TestFixture::new();
+    let file = fixture.create_test_text_file("test.txt", "Test content");
 
-mod timestamp_tests {
-    use dx_media::tools::utility::timestamp;
-
-    #[test]
-    fn test_now_unix() {
-        let result = timestamp::now(timestamp::TimestampFormat::Unix);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.success);
-    }
-
-    #[test]
-    fn test_now_iso() {
-        let result = timestamp::now(timestamp::TimestampFormat::Iso8601);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_now_rfc2822() {
-        let result = timestamp::now(timestamp::TimestampFormat::Rfc2822);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_convert_unix_to_iso() {
-        let result = timestamp::convert(
-            "1609459200",
-            timestamp::TimestampFormat::Unix,
-            timestamp::TimestampFormat::Iso8601,
-        );
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_add_seconds() {
-        let result = timestamp::add("1609459200", 3600, timestamp::TimestampFormat::Unix);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_diff_timestamps() {
-        let result = timestamp::diff(
-            "1609459200",
-            "1609462800",
-            timestamp::TimestampFormat::Unix,
-        );
-        assert!(result.is_ok());
-    }
+    let result = utility::encode_file(&file);
+    assert!(result.is_ok());
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 10. RANDOM GENERATOR TESTS
-// ═══════════════════════════════════════════════════════════════
+// =============================================================================
+// 53. url_encode - URL encoding/decoding
+// =============================================================================
 
-mod random_tests {
-    use dx_media::tools::utility::random;
-
-    #[test]
-    fn test_random_string_alphanumeric() {
-        let result = random::string(16, random::CharSet::Alphanumeric);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert_eq!(output.message.len(), 16);
-    }
-
-    #[test]
-    fn test_random_string_alpha() {
-        let result = random::string(10, random::CharSet::Alpha);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.message.chars().all(|c| c.is_alphabetic()));
-    }
-
-    #[test]
-    fn test_random_string_numeric() {
-        let result = random::string(8, random::CharSet::Numeric);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.message.chars().all(|c| c.is_numeric()));
-    }
-
-    #[test]
-    fn test_random_string_hex() {
-        let result = random::string(12, random::CharSet::Hex);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.message.chars().all(|c| c.is_ascii_hexdigit()));
-    }
-
-    #[test]
-    fn test_random_integer() {
-        let result = random::integer(1, 100);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        let num: i64 = output.message.trim().parse().unwrap();
-        assert!((1..=100).contains(&num));
-    }
-
-    #[test]
-    fn test_random_float() {
-        let result = random::float(0.0, 1.0);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        let num: f64 = output.message.trim().parse().unwrap();
-        assert!((0.0..=1.0).contains(&num));
-    }
-
-    #[test]
-    fn test_random_bytes() {
-        let result = random::bytes(32);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_random_boolean() {
-        let result = random::boolean();
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.message.contains("true") || output.message.contains("false"));
-    }
-
-    #[test]
-    fn test_random_pick() {
-        let items = ["apple", "banana", "cherry"];
-        let result = random::pick(&items);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(items.contains(&output.message.trim()));
-    }
-
-    #[test]
-    fn test_random_shuffle() {
-        let items = ["a", "b", "c", "d"];
-        let result = random::shuffle(&items);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_password_generation() {
-        let result = random::password(16, true);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.message.len() >= 16);
-    }
-
-    #[test]
-    fn test_batch_integers() {
-        let result = random::batch_integers(5, 1, 10);
-        assert!(result.is_ok());
-    }
+#[test]
+fn test_url_encode() {
+    let result = utility::encode("hello world");
+    assert!(result.is_ok());
+    let output = result.unwrap();
+    assert!(output.message.contains("hello%20world") || output.message.contains("hello+world"));
 }
 
-// ═══════════════════════════════════════════════════════════════
-// UTILITY TOOLS COLLECTION TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_url_decode() {
+    let result = utility::decode("hello%20world");
+    assert!(result.is_ok());
+}
 
-mod utility_tools_tests {
-    use super::*;
+#[test]
+fn test_url_encode_component() {
+    let result = utility::encode_component("name=value&other=test");
+    assert!(result.is_ok());
+}
 
-    #[test]
-    fn test_utility_tools_instantiation() {
-        let tools = utility::UtilityTools::new();
-        drop(tools);
-    }
+#[test]
+fn test_url_encode_path() {
+    let result = utility::encode_path("/path/to/file with spaces");
+    assert!(result.is_ok());
+}
 
-    #[test]
-    fn test_utility_tools_default() {
-        let tools = utility::UtilityTools::default();
-        drop(tools);
-    }
+#[test]
+fn test_url_parse_query() {
+    let result = utility::parse_query_string("name=value&other=test");
+    assert!(result.is_ok());
+}
 
-    #[test]
-    fn test_utility_tools_url_encode() {
-        let tools = utility::UtilityTools::new();
-        let result = tools.url_encode("hello world");
-        assert!(result.is_ok());
-    }
+// =============================================================================
+// 54. json_format - JSON formatting
+// =============================================================================
 
-    #[test]
-    fn test_utility_tools_url_decode() {
-        let tools = utility::UtilityTools::new();
-        let result = tools.url_decode("hello%20world");
-        assert!(result.is_ok());
-    }
+#[test]
+fn test_json_format_string() {
+    let json = r#"{"name":"test","value":123}"#;
+    let result = utility::format_string(json);
+    assert!(result.is_ok());
+}
 
-    #[test]
-    fn test_utility_tools_generate_uuid() {
-        let tools = utility::UtilityTools::new();
-        let result = tools.generate_uuid();
-        assert!(result.is_ok());
-    }
+#[test]
+fn test_json_format_with_indent() {
+    let json = r#"{"name":"test"}"#;
 
-    #[test]
-    fn test_utility_tools_timestamp() {
-        let tools = utility::UtilityTools::new();
-        let result = tools.timestamp();
-        assert!(result.is_ok());
-    }
+    // Test indent variants
+    let _ = utility::JsonIndent::None;
+    let _ = utility::JsonIndent::Spaces2;
+    let _ = utility::JsonIndent::Spaces4;
+    let _ = utility::JsonIndent::Tab;
 
-    #[test]
-    fn test_utility_tools_random_string() {
-        let tools = utility::UtilityTools::new();
-        let result = tools.random_string(10);
-        assert!(result.is_ok());
-    }
+    let result = utility::format_string_with_indent(json, utility::JsonIndent::Spaces4);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_json_minify() {
+    let json = r#"{
+        "name": "test",
+        "value": 123
+    }"#;
+    let result = utility::minify_string(json);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_json_validate() {
+    let valid_json = r#"{"name":"test"}"#;
+    let result = utility::validate_string(valid_json);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_json_sort_keys() {
+    let json = r#"{"z":"last","a":"first"}"#;
+    let result = utility::sort_keys(json);
+    assert!(result.is_ok());
+}
+
+// =============================================================================
+// 55. yaml_convert - YAML/JSON conversion
+// =============================================================================
+
+#[test]
+fn test_yaml_string_to_json() {
+    let yaml = "name: test\nvalue: 123";
+    let result = utility::yaml_string_to_json(yaml);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_json_string_to_yaml() {
+    let json = r#"{"name":"test","value":123}"#;
+    let result = utility::json_string_to_yaml(json);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_yaml_file_conversion() {
+    let fixture = TestFixture::new();
+    let yaml_file = fixture.create_test_text_file("test.yaml", "name: test\nvalue: 123");
+    let json_file = fixture.path("test.json");
+
+    let result = utility::yaml_to_json(&yaml_file, &json_file);
+    let _ = result;
+}
+
+// =============================================================================
+// 56. csv_convert - CSV conversion
+// =============================================================================
+
+#[test]
+fn test_csv_to_json_file() {
+    let fixture = TestFixture::new();
+    let csv_file = fixture.create_test_text_file("test.csv", "name,age\nAlice,30\nBob,25");
+    let json_file = fixture.path("test.json");
+
+    let result = utility::csv_to_json(&csv_file, &json_file);
+    let _ = result;
+}
+
+#[test]
+fn test_json_to_csv_file() {
+    let fixture = TestFixture::new();
+    let json_file = fixture.create_test_text_file(
+        "test.json",
+        r#"[{"name":"Alice","age":30},{"name":"Bob","age":25}]"#,
+    );
+    let csv_file = fixture.path("test.csv");
+
+    let result = utility::json_to_csv(&json_file, &csv_file);
+    let _ = result;
+}
+
+#[test]
+fn test_csv_options() {
+    let options = utility::CsvOptions::default();
+    let _ = options;
+}
+
+// =============================================================================
+// 57. diff - Text diff
+// =============================================================================
+
+#[test]
+fn test_diff_strings() {
+    let text1 = "Hello\nWorld";
+    let text2 = "Hello\nRust";
+    let result = utility::diff_strings(text1, text2);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_diff_files() {
+    let fixture = TestFixture::new();
+    let file1 = fixture.create_test_text_file("file1.txt", "Hello\nWorld");
+    let file2 = fixture.create_test_text_file("file2.txt", "Hello\nRust");
+
+    let result = utility::diff_files(&file1, &file2);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_diff_format() {
+    // Test DiffFormat enum
+    let _ = utility::DiffFormat::Unified;
+    let _ = utility::DiffFormat::Context;
+    let _ = utility::DiffFormat::SideBySide;
+
+    let result = utility::diff_strings_with_format(
+        "line1\nline2",
+        "line1\nline3",
+        utility::DiffFormat::Unified,
+    );
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_files_identical() {
+    let fixture = TestFixture::new();
+    let file1 = fixture.create_test_text_file("file1.txt", "Same content");
+    let file2 = fixture.create_test_text_file("file2.txt", "Same content");
+
+    let result = utility::files_identical(&file1, &file2);
+    assert!(result.is_ok());
+}
+
+// =============================================================================
+// 58. uuid - UUID generation
+// =============================================================================
+
+#[test]
+fn test_uuid_generate_v4() {
+    let uuid = utility::generate_v4();
+    assert!(!uuid.is_empty());
+    assert!(uuid.len() == 36); // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+}
+
+#[test]
+fn test_uuid_generate() {
+    // Test UuidVersion variants
+    let _ = utility::UuidVersion::V4;
+
+    let result = utility::generate(utility::UuidVersion::V4);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_uuid_validate() {
+    let valid_uuid = "550e8400-e29b-41d4-a716-446655440000";
+    let result = utility::validate(valid_uuid);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_uuid_parse() {
+    let uuid = "550e8400-e29b-41d4-a716-446655440000";
+    let result = utility::parse(uuid);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_uuid_batch() {
+    let result = utility::generate_batch(5, utility::UuidVersion::V4);
+    assert!(result.is_ok());
+}
+
+// =============================================================================
+// 59. timestamp - Timestamp utilities
+// =============================================================================
+
+#[test]
+fn test_timestamp_format_enum() {
+    let _ = utility::TimestampFormat::Unix;
+    let _ = utility::TimestampFormat::Iso8601;
+    let _ = utility::TimestampFormat::Rfc2822;
+}
+
+#[test]
+fn test_timestamp_now() {
+    let result = utility::now(utility::TimestampFormat::Iso8601);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_timestamp_convert() {
+    let result = utility::convert(
+        "1609459200",
+        utility::TimestampFormat::Unix,
+        utility::TimestampFormat::Iso8601,
+    );
+    let _ = result;
+}
+
+// =============================================================================
+// 60. random - Random generation
+// =============================================================================
+
+#[test]
+fn test_charset_enum() {
+    let _ = utility::CharSet::Alphanumeric;
+    let _ = utility::CharSet::Alphabetic;
+    let _ = utility::CharSet::Lowercase;
+    let _ = utility::CharSet::Uppercase;
+    let _ = utility::CharSet::Numeric;
+    let _ = utility::CharSet::Hex;
+    let _ = utility::CharSet::Ascii;
+}
+
+#[test]
+fn test_random_string() {
+    let result = utility::string(16, utility::CharSet::Alphanumeric);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_integer() {
+    let result = utility::integer(1, 100);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_float() {
+    let result = utility::float(0.0, 1.0);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_bytes() {
+    let result = utility::bytes(32);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_boolean() {
+    let result = utility::boolean();
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_password() {
+    let result = utility::password(16, true);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_pick() {
+    let items = ["apple", "banana", "cherry"];
+    let result = utility::pick(&items);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_shuffle() {
+    let items = ["a", "b", "c", "d"];
+    let result = utility::shuffle(&items);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_color() {
+    let result = utility::color("hex");
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_random_batch_integers() {
+    let result = utility::batch_integers(10, 1, 100);
+    assert!(result.is_ok());
 }

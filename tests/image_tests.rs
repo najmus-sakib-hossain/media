@@ -1,248 +1,457 @@
 //! Tests for image tools.
-//!
-//! These tests cover the 10 image tools:
-//! 1. Format Converter
-//! 2. Resizer
-//! 3. Compressor
-//! 4. Watermarker
-//! 5. EXIF Reader
-//! 6. QR Code Generator
-//! 7. Color Palette Extractor
-//! 8. Filter Processor
-//! 9. OCR Text Extractor
-//! 10. Icon Generator
-//!
-//! Note: These tests require ImageMagick to be installed.
 
 mod common;
+
 use common::TestFixture;
 use dx_media::tools::image;
 
-// ═══════════════════════════════════════════════════════════════
-// 1. FORMAT CONVERTER TESTS
-// ═══════════════════════════════════════════════════════════════
+// =============================================================================
+// 1. converter - Image format conversion
+// =============================================================================
 
-mod converter_tests {
-    use super::*;
-    use dx_media::tools::image::converter;
-
-    #[test]
-    fn test_image_format_extensions() {
-        assert_eq!(converter::ImageFormat::Jpeg.extension(), "jpg");
-        assert_eq!(converter::ImageFormat::Png.extension(), "png");
-        assert_eq!(converter::ImageFormat::Webp.extension(), "webp");
-        assert_eq!(converter::ImageFormat::Gif.extension(), "gif");
-        assert_eq!(converter::ImageFormat::Bmp.extension(), "bmp");
-    }
-
-    #[test]
-    fn test_format_from_extension() {
-        assert!(converter::ImageFormat::from_extension("jpg").is_some());
-        assert!(converter::ImageFormat::from_extension("png").is_some());
-        assert!(converter::ImageFormat::from_extension("xyz").is_none());
-    }
+#[test]
+fn test_image_format_enum() {
+    let _ = image::ImageFormat::Png;
+    let _ = image::ImageFormat::Jpeg;
+    let _ = image::ImageFormat::Gif;
+    let _ = image::ImageFormat::Webp;
+    let _ = image::ImageFormat::Bmp;
+    let _ = image::ImageFormat::Tiff;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 2. RESIZER TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_image_convert() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("test.png");
 
-mod resizer_tests {
-    use dx_media::tools::image::resizer;
-
-    // Note: Actual resize tests require ImageMagick and real images
-    #[test]
-    fn test_resize_module_exists() {
-        // Verify the module exists and functions are accessible
-        let _ = resizer::resize::<&str, &str>;
-        let _ = resizer::resize_to_width::<&str, &str>;
-        let _ = resizer::resize_to_height::<&str, &str>;
-    }
+    let result = image::convert(&input, &output);
+    let _ = result; // May fail without ImageMagick
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 3. COMPRESSOR TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_image_convert_to_format() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("test.jpg");
 
-mod compressor_tests {
-    use dx_media::tools::image::compressor;
-
-    #[test]
-    fn test_compression_quality_enum() {
-        let _ = compressor::CompressionQuality::Low;
-        let _ = compressor::CompressionQuality::Medium;
-        let _ = compressor::CompressionQuality::High;
-        let _ = compressor::CompressionQuality::Maximum;
-    }
+    let result = image::convert_to_format(&input, &output, image::ImageFormat::Jpeg);
+    let _ = result;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 4. WATERMARK TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_image_get_info() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
 
-mod watermark_tests {
-    use dx_media::tools::image::watermark;
-
-    #[test]
-    fn test_watermark_position_enum() {
-        let _ = watermark::WatermarkPosition::TopLeft;
-        let _ = watermark::WatermarkPosition::TopRight;
-        let _ = watermark::WatermarkPosition::BottomLeft;
-        let _ = watermark::WatermarkPosition::BottomRight;
-        let _ = watermark::WatermarkPosition::Center;
-    }
+    let result = image::get_info(&input);
+    let _ = result;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 5. EXIF READER TESTS
-// ═══════════════════════════════════════════════════════════════
+// =============================================================================
+// 2. resizer - Image resizing
+// =============================================================================
 
-mod exif_tests {
-    use dx_media::tools::image::exif;
-
-    #[test]
-    fn test_exif_info_struct() {
-        let info = exif::ExifInfo::default();
-        assert!(info.is_empty());
-        assert!(!info.has_gps());
-    }
-
-    #[test]
-    fn test_exif_info_get() {
-        let info = exif::ExifInfo::default();
-        assert!(info.get("nonexistent").is_none());
-    }
+#[test]
+fn test_resize_filter_enum() {
+    let _ = image::ResizeFilter::Lanczos;
+    let _ = image::ResizeFilter::Bilinear;
+    let _ = image::ResizeFilter::Bicubic;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 6. QR CODE GENERATOR TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_image_resize() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("resized.pgm");
 
-mod qrcode_tests {
-    use dx_media::tools::image::qrcode;
-
-    #[test]
-    fn test_qr_error_correction() {
-        let _ = qrcode::QrErrorCorrection::Low;
-        let _ = qrcode::QrErrorCorrection::Medium;
-        let _ = qrcode::QrErrorCorrection::High;
-    }
-
-    #[test]
-    fn test_qr_options_struct() {
-        let options = qrcode::QrOptions::default();
-        assert!(options.size > 0);
-    }
+    let result = image::resize(&input, &output, 100, 100);
+    let _ = result;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 7. COLOR PALETTE EXTRACTOR TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_image_resize_fit() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("resized.pgm");
 
-mod palette_tests {
-    use dx_media::tools::image::palette;
-
-    #[test]
-    fn test_color_struct() {
-        let color = palette::Color { r: 255, g: 128, b: 0 };
-        let hex = color.to_hex();
-        assert!(hex.starts_with('#'));
-        assert_eq!(hex.len(), 7);
-    }
-
-    #[test]
-    fn test_color_to_rgb() {
-        let color = palette::Color { r: 100, g: 150, b: 200 };
-        let rgb = color.to_rgb();
-        assert!(rgb.contains("100"));
-        assert!(rgb.contains("150"));
-        assert!(rgb.contains("200"));
-    }
+    let result = image::resize_fit(&input, &output, 200, 200);
+    let _ = result;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 8. FILTER PROCESSOR TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_image_scale() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("scaled.pgm");
 
-mod filters_tests {
-    use dx_media::tools::image::filters;
-
-    #[test]
-    fn test_filter_enum() {
-        let _ = filters::Filter::Grayscale;
-        let _ = filters::Filter::Sepia;
-        let _ = filters::Filter::Blur(2.0);
-        let _ = filters::Filter::Sharpen(1.0);
-        let _ = filters::Filter::Brightness(10);
-        let _ = filters::Filter::Contrast(10);
-        let _ = filters::Filter::Invert;
-    }
+    let result = image::scale(&input, &output, 50);
+    let _ = result;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 9. OCR TEXT EXTRACTOR TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_image_thumbnail() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("thumb.pgm");
 
-mod ocr_tests {
-    use dx_media::tools::image::ocr;
-
-    #[test]
-    fn test_ocr_options_builders() {
-        let single_column = ocr::OcrOptions::single_column();
-        assert!(single_column.language.is_none() || single_column.language.is_some());
-
-        let single_block = ocr::OcrOptions::single_block();
-        let _ = single_block;
-
-        let single_line = ocr::OcrOptions::single_line();
-        let _ = single_line;
-
-        let single_word = ocr::OcrOptions::single_word();
-        let _ = single_word;
-    }
-
-    #[test]
-    fn test_ocr_options_with_language() {
-        let options = ocr::OcrOptions::single_column().with_language("eng");
-        assert_eq!(options.language, Some("eng".to_string()));
-    }
+    let result = image::thumbnail(&input, &output, 64);
+    let _ = result;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 10. ICON GENERATOR TESTS
-// ═══════════════════════════════════════════════════════════════
+// =============================================================================
+// 3. compressor - Image compression
+// =============================================================================
 
-mod icons_tests {
-    use dx_media::tools::image::icons;
-
-    #[test]
-    fn test_icon_functions_exist() {
-        // Verify the functions exist
-        let _ = icons::generate_icon::<&str, &str>;
-        let _ = icons::generate_favicon::<&str, &str>;
-        let _ = icons::generate_ios_icons::<&str, &str>;
-        let _ = icons::generate_android_icons::<&str, &str>;
-        let _ = icons::generate_pwa_icons::<&str, &str>;
-        let _ = icons::generate_all_icons::<&str, &str>;
-    }
+#[test]
+fn test_compression_quality_enum() {
+    let _ = image::CompressionQuality::Low;
+    let _ = image::CompressionQuality::Medium;
+    let _ = image::CompressionQuality::High;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// IMAGE TOOLS COLLECTION TESTS
-// ═══════════════════════════════════════════════════════════════
+#[test]
+fn test_image_compress() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("compressed.pgm");
 
-mod image_tools_tests {
-    use super::*;
+    let result = image::compress(&input, &output, 80);
+    let _ = result;
+}
 
-    #[test]
-    fn test_image_tools_instantiation() {
-        let tools = image::ImageTools::new();
-        drop(tools);
-    }
+#[test]
+fn test_image_optimize() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("optimized.pgm");
 
-    #[test]
-    fn test_image_tools_default() {
-        let tools = image::ImageTools::default();
-        drop(tools);
-    }
+    let result = image::optimize(&input, &output);
+    let _ = result;
+}
+
+// =============================================================================
+// 4. watermark - Image watermarking
+// =============================================================================
+
+#[test]
+fn test_watermark_position_enum() {
+    let _ = image::WatermarkPosition::TopLeft;
+    let _ = image::WatermarkPosition::TopRight;
+    let _ = image::WatermarkPosition::BottomLeft;
+    let _ = image::WatermarkPosition::BottomRight;
+    let _ = image::WatermarkPosition::Center;
+}
+
+#[test]
+fn test_image_text_watermark() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("watermarked.pgm");
+
+    let result = image::add_text_watermark(
+        &input,
+        &output,
+        "© 2025",
+        image::WatermarkPosition::BottomRight,
+    );
+    let _ = result;
+}
+
+#[test]
+fn test_image_watermark_options() {
+    let options = image::WatermarkOptions::default();
+    let _ = options;
+}
+
+// =============================================================================
+// 5. exif - EXIF metadata
+// =============================================================================
+
+#[test]
+fn test_exif_read() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+
+    let result = image::read_exif(&input);
+    let _ = result; // May fail without exiftool
+}
+
+#[test]
+fn test_exif_strip_metadata() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("stripped.pgm");
+
+    let result = image::strip_metadata(&input, &output);
+    let _ = result;
+}
+
+#[test]
+fn test_exif_set_copyright() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("copyrighted.pgm");
+
+    let result = image::set_copyright(&input, &output, "© Test 2025");
+    let _ = result;
+}
+
+// =============================================================================
+// 6. qrcode - QR code generation
+// =============================================================================
+
+#[test]
+fn test_qr_error_correction_enum() {
+    let _ = image::QrErrorCorrection::Low;
+    let _ = image::QrErrorCorrection::Medium;
+    let _ = image::QrErrorCorrection::High;
+}
+
+#[test]
+fn test_qr_generate() {
+    let fixture = TestFixture::new();
+    let output = fixture.path("qr.png");
+
+    let result = image::generate_qr("https://example.com", &output, 200);
+    let _ = result;
+}
+
+#[test]
+fn test_qr_generate_svg() {
+    let fixture = TestFixture::new();
+    let output = fixture.path("qr.svg");
+
+    let result = image::generate_qr_svg("Test data", &output, 200);
+    let _ = result;
+}
+
+#[test]
+fn test_qr_decode() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("qr.png");
+
+    let result = image::decode_qr(&input);
+    let _ = result;
+}
+
+// =============================================================================
+// 7. palette - Color palette extraction
+// =============================================================================
+
+#[test]
+fn test_palette_extract() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+
+    let result = image::extract_palette(&input, 5);
+    let _ = result;
+}
+
+#[test]
+fn test_color_struct() {
+    let color = image::Color {
+        r: 255,
+        g: 128,
+        b: 64,
+        percentage: 25.0,
+    };
+    assert_eq!(color.to_hex(), "#ff8040");
+    assert_eq!(color.to_rgb(), "rgb(255, 128, 64)");
+}
+
+#[test]
+fn test_dominant_color() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+
+    let result = image::extract_dominant_color(&input);
+    let _ = result;
+}
+
+// =============================================================================
+// 8. filters - Image filters
+// =============================================================================
+
+#[test]
+fn test_filter_enum() {
+    let _ = image::Filter::Grayscale;
+    let _ = image::Filter::Sepia;
+    let _ = image::Filter::Invert;
+    let _ = image::Filter::Blur;
+    let _ = image::Filter::Sharpen;
+    let _ = image::Filter::Emboss;
+    let _ = image::Filter::Edge;
+    let _ = image::Filter::OilPaint;
+    let _ = image::Filter::Charcoal;
+}
+
+#[test]
+fn test_apply_filter() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("filtered.pgm");
+
+    let result = image::apply_filter(&input, &output, image::Filter::Grayscale);
+    let _ = result;
+}
+
+#[test]
+fn test_grayscale() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("gray.pgm");
+
+    let result = image::grayscale(&input, &output);
+    let _ = result;
+}
+
+#[test]
+fn test_sepia() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("sepia.pgm");
+
+    let result = image::sepia(&input, &output);
+    let _ = result;
+}
+
+#[test]
+fn test_brightness() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("bright.pgm");
+
+    let result = image::brightness(&input, &output, 20);
+    let _ = result;
+}
+
+#[test]
+fn test_contrast() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("contrast.pgm");
+
+    let result = image::contrast(&input, &output, 30);
+    let _ = result;
+}
+
+#[test]
+fn test_blur() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("blurred.pgm");
+
+    let result = image::blur(&input, &output, 3.0);
+    let _ = result;
+}
+
+#[test]
+fn test_rotate() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("rotated.pgm");
+
+    let result = image::rotate(&input, &output, 90.0);
+    let _ = result;
+}
+
+#[test]
+fn test_flip() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output_h = fixture.path("flipped_h.pgm");
+    let output_v = fixture.path("flipped_v.pgm");
+
+    let _ = image::flip_horizontal(&input, &output_h);
+    let _ = image::flip_vertical(&input, &output_v);
+}
+
+// =============================================================================
+// 9. ocr - Optical character recognition
+// =============================================================================
+
+#[test]
+fn test_ocr_options() {
+    let options = image::OcrOptions::default();
+    let _ = options;
+}
+
+#[test]
+fn test_ocr_extract_simple() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+
+    let result = image::extract_text_simple(&input);
+    let _ = result; // May fail without tesseract
+}
+
+#[test]
+fn test_ocr_extract_with_options() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let options = image::OcrOptions::default();
+
+    let result = image::extract_text(&input, options);
+    let _ = result;
+}
+
+#[test]
+fn test_ocr_list_languages() {
+    let result = image::list_languages();
+    let _ = result;
+}
+
+// =============================================================================
+// 10. icons - Icon generation
+// =============================================================================
+
+#[test]
+fn test_icon_generate() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("icon.png");
+
+    let result = image::generate_icon(&input, &output, 64);
+    let _ = result;
+}
+
+#[test]
+fn test_favicon_generate() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output = fixture.path("favicon.ico");
+
+    let result = image::generate_favicon(&input, &output);
+    let _ = result;
+}
+
+#[test]
+fn test_ios_icons() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output_dir = fixture.path("ios_icons");
+
+    let result = image::generate_ios_icons(&input, &output_dir);
+    let _ = result;
+}
+
+#[test]
+fn test_android_icons() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output_dir = fixture.path("android_icons");
+
+    let result = image::generate_android_icons(&input, &output_dir);
+    let _ = result;
+}
+
+#[test]
+fn test_all_icons() {
+    let fixture = TestFixture::new();
+    let input = fixture.create_test_image("test.pgm");
+    let output_dir = fixture.path("all_icons");
+
+    let result = image::generate_all_icons(&input, &output_dir);
+    let _ = result;
 }

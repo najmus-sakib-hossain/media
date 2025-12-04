@@ -1,64 +1,51 @@
-//! Common test utilities and fixtures.
+//! Common test utilities.
 
+use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-/// Test fixture helper providing temporary directories and test file creation.
+/// Test fixture for managing temporary files.
 pub struct TestFixture {
-    /// Temporary directory for test files.
     pub temp_dir: TempDir,
 }
 
 impl TestFixture {
-    /// Create a new test fixture with a temporary directory.
     pub fn new() -> Self {
         Self {
-            temp_dir: TempDir::new().expect("Failed to create temp directory"),
+            temp_dir: TempDir::new().expect("Failed to create temp dir"),
         }
     }
 
-    /// Get path for a file in the temp directory.
     pub fn path(&self, name: &str) -> PathBuf {
         self.temp_dir.path().join(name)
     }
 
-    /// Create a test text file with given content.
-    pub fn create_text_file(&self, name: &str, content: &str) -> PathBuf {
+    pub fn create_temp_file(&self, name: &str, content: &[u8]) -> PathBuf {
         let path = self.path(name);
-        std::fs::write(&path, content).expect("Failed to write test file");
+        fs::write(&path, content).expect("Failed to write temp file");
         path
     }
 
-    /// Create a test JSON file.
-    pub fn create_json_file(&self, name: &str, json: &str) -> PathBuf {
-        self.create_text_file(name, json)
+    /// Create a minimal test image (1x1 PGM).
+    pub fn create_test_image(&self, name: &str) -> PathBuf {
+        // PGM format: simple grayscale
+        let pgm = b"P5\n1 1\n255\n\x80";
+        self.create_temp_file(name, pgm)
     }
 
-    /// Create a test CSV file.
-    pub fn create_csv_file(&self, name: &str, content: &str) -> PathBuf {
-        self.create_text_file(name, content)
+    /// Create a test text file.
+    pub fn create_test_text_file(&self, name: &str, content: &str) -> PathBuf {
+        self.create_temp_file(name, content.as_bytes())
     }
 
-    /// Create a binary file with given bytes.
-    pub fn create_binary_file(&self, name: &str, data: &[u8]) -> PathBuf {
-        let path = self.path(name);
-        std::fs::write(&path, data).expect("Failed to write binary file");
-        path
+    /// Create a minimal test audio file placeholder (just bytes, not real audio).
+    pub fn create_test_audio(&self, name: &str) -> PathBuf {
+        // Note: This won't work with ffmpeg but we're testing function availability
+        self.create_temp_file(name, b"fake audio content")
     }
 
-    /// Check if a file exists.
-    pub fn exists(&self, name: &str) -> bool {
-        self.path(name).exists()
-    }
-
-    /// Read file contents as string.
-    pub fn read_string(&self, name: &str) -> String {
-        std::fs::read_to_string(self.path(name)).expect("Failed to read file")
-    }
-}
-
-impl Default for TestFixture {
-    fn default() -> Self {
-        Self::new()
+    /// Create a minimal test video file placeholder.
+    pub fn create_test_video(&self, name: &str) -> PathBuf {
+        self.create_temp_file(name, b"fake video content")
     }
 }

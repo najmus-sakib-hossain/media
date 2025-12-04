@@ -215,87 +215,11 @@ fn minify_json_impl(input: &str) -> Result<String> {
 
 /// Validate JSON implementation.
 fn validate_json_impl(input: &str) -> std::result::Result<(), String> {
-    let mut depth = 0;
-    let mut in_string = false;
-    let mut escape_next = false;
-    let mut expect_value = true;
-    let mut expect_colon = false;
-    let mut expect_comma_or_end = false;
-
-    let chars: Vec<char> = input.trim().chars().collect();
-
-    if chars.is_empty() {
-        return Err("Empty input".to_string());
+    // Use serde_json for proper validation
+    match serde_json::from_str::<serde_json::Value>(input) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Invalid JSON: {}", e)),
     }
-
-    for (i, c) in chars.iter().enumerate() {
-        if escape_next {
-            escape_next = false;
-            continue;
-        }
-
-        if *c == '\\' && in_string {
-            escape_next = true;
-            continue;
-        }
-
-        if *c == '"' {
-            in_string = !in_string;
-            if !in_string {
-                expect_value = false;
-                expect_comma_or_end = true;
-            }
-            continue;
-        }
-
-        if in_string {
-            continue;
-        }
-
-        match c {
-            ' ' | '\t' | '\n' | '\r' => continue,
-            '{' | '[' => {
-                depth += 1;
-                expect_value = true;
-                expect_comma_or_end = false;
-            }
-            '}' | ']' => {
-                depth -= 1;
-                if depth < 0 {
-                    return Err(format!("Unexpected '{}' at position {}", c, i));
-                }
-                expect_comma_or_end = true;
-            }
-            ':' => {
-                if !expect_colon {
-                    return Err(format!("Unexpected ':' at position {}", i));
-                }
-                expect_colon = false;
-                expect_value = true;
-            }
-            ',' => {
-                if !expect_comma_or_end {
-                    return Err(format!("Unexpected ',' at position {}", i));
-                }
-                expect_comma_or_end = false;
-                expect_value = true;
-            }
-            _ => {
-                expect_value = false;
-                expect_comma_or_end = true;
-            }
-        }
-    }
-
-    if in_string {
-        return Err("Unterminated string".to_string());
-    }
-
-    if depth != 0 {
-        return Err("Mismatched brackets".to_string());
-    }
-
-    Ok(())
 }
 
 /// Extract JSON path value.
