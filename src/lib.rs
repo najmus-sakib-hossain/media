@@ -96,13 +96,11 @@ pub use types::{License, MediaAsset, MediaType, SearchQuery, SearchResult};
 // Re-export engine components
 pub use engine::{Downloader, FileManager, ScrapeOptions, ScrapeResult, Scraper, SearchEngine};
 
-// Re-export FREE providers (13 providers with 890M+ assets - NO API KEYS REQUIRED)
+// Re-export FREE providers (10 providers with 890M+ assets - NO API KEYS REQUIRED)
 pub use providers::{
-    ArtInstituteChicagoProvider,
     ClevelandMuseumProvider,
     DplaProvider,
     EuropeanaProvider,
-    InternetArchiveProvider,
     LibraryOfCongressProvider,
     LoremPicsumProvider,
     MetMuseumProvider,
@@ -118,7 +116,7 @@ pub use providers::{
     WikimediaCommonsProvider,
 };
 
-// Re-export PREMIUM providers (6 providers with 113M+ assets - OPTIONAL API KEYS)
+// Re-export PREMIUM providers (7 providers with 113M+ assets - OPTIONAL API KEYS)
 // These gracefully degrade when API keys are not configured
 pub use providers::{
     FreesoundProvider,   // 600K+ sound effects
@@ -137,5 +135,5 @@ pub use tools::{
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// User agent for API requests
-pub const USER_AGENT: &str = concat!("dx-media/", env!("CARGO_PKG_VERSION"));
+/// User agent for API requests - using browser-like UA to avoid blocks
+pub const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";

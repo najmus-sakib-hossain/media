@@ -137,9 +137,11 @@ impl Scraper {
         // Parse HTML
         let document = Html::parse_document(&html);
 
-        // Extract images
+        // Extract images from various sources
         if options.media_types.contains(&MediaType::Image) {
             self.extract_images(&document, url, options, result);
+            // Also extract from raw HTML for JS-heavy sites
+            self.extract_images_from_raw_html(&html, url, options, result);
         }
 
         // Extract videos
@@ -169,6 +171,139 @@ impl Scraper {
         }
 
         Ok(())
+    }
+
+    /// Extract image URLs from raw HTML text (for JS-heavy sites).
+    /// This finds image URLs in JSON data, script tags, and other places
+    /// that normal HTML parsing misses.
+    fn extract_images_from_raw_html(
+        &self,
+        html: &str,
+        base_url: &Url,
+        options: &ScrapeOptions,
+        result: &mut ScrapeResult,
+    ) {
+        // Common image CDN patterns for stock photo sites
+        let cdn_patterns = [
+            // Unsplash
+            r#"https?://images\.unsplash\.com/photo-[a-zA-Z0-9_-]+\?[^"'\s]*w=\d+"#,
+            // Pexels
+            r#"https?://images\.pexels\.com/photos/\d+/[^"'\s]+\.(?:jpe?g|png|webp)"#,
+            // Pixabay
+            r#"https?://cdn\.pixabay\.com/photo/\d+/\d+/\d+/\d+/\d+/[^"'\s]+\.(?:jpe?g|png|webp)"#,
+            r#"https?://pixabay\.com/get/[^"'\s]+\.(?:jpe?g|png|webp)"#,
+            // General image URLs with common extensions
+            r#"https?://[^"'\s<>]+\.(?:jpe?g|png|webp|gif)(?:\?[^"'\s<>]*)?"#,
+        ];
+
+        let mut seen_urls: std::collections::HashSet<String> = result
+            .assets
+            .iter()
+            .map(|a| a.download_url.clone())
+            .collect();
+
+        for pattern in &cdn_patterns {
+            if result.assets.len() >= options.max_assets {
+                break;
+            }
+
+            if let Ok(regex) = Regex::new(pattern) {
+                for cap in regex.find_iter(html) {
+                    if result.assets.len() >= options.max_assets {
+                        break;
+                    }
+
+                    let url_str = cap.as_str()
+                        .replace("&amp;", "&")
+                        .replace("\\u0026", "&");
+
+                    // Skip if already found
+                    if seen_urls.contains(&url_str) {
+                        continue;
+                    }
+
+                    // Skip small thumbnails and icons
+                    if self.is_small_image_url(&url_str) {
+                        continue;
+                    }
+
+                    // Skip data URLs and invalid URLs
+                    if url_str.starts_with("data:") {
+                        continue;
+                    }
+
+                    // Validate URL
+                    if Url::parse(&url_str).is_err() {
+                        continue;
+                    }
+
+                    seen_urls.insert(url_str.clone());
+
+                    let idx = result.assets.len();
+                    let title = self.extract_title_from_url(&url_str);
+
+                    result.assets.push(
+                        MediaAsset::builder()
+                            .id(format!("scraped-{idx}"))
+                            .provider("scraper")
+                            .media_type(MediaType::Image)
+                            .title(title)
+                            .download_url(url_str)
+                            .source_url(base_url.to_string())
+                            .license(License::Other("Unknown - Check source".to_string()))
+                            .build(),
+                    );
+                }
+            }
+        }
+    }
+
+    /// Check if URL appears to be a small thumbnail or icon.
+    fn is_small_image_url(&self, url: &str) -> bool {
+        let url_lower = url.to_lowercase();
+        
+        // Skip if explicitly marked as small
+        if url_lower.contains("w=50") || url_lower.contains("w=100") || 
+           url_lower.contains("thumb") || url_lower.contains("icon") ||
+           url_lower.contains("avatar") || url_lower.contains("profile") ||
+           url_lower.contains("_s.") || url_lower.contains("_xs.") ||
+           url_lower.contains("_tiny") || url_lower.contains("favicon") {
+            return true;
+        }
+
+        // For Unsplash, skip very small widths
+        if url_lower.contains("unsplash.com") {
+            if let Some(w_match) = Regex::new(r"w=(\d+)").ok().and_then(|r| r.captures(url)) {
+                if let Some(w) = w_match.get(1).and_then(|m| m.as_str().parse::<u32>().ok()) {
+                    return w < 400;
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Extract a title from the URL.
+    fn extract_title_from_url(&self, url: &str) -> String {
+        // Try to extract a meaningful name from the URL path
+        if let Ok(parsed) = Url::parse(url) {
+            if let Some(segments) = parsed.path_segments() {
+                let segments: Vec<_> = segments.collect();
+                if let Some(last) = segments.last() {
+                    // Clean up the filename
+                    let name = last
+                        .split('.')
+                        .next()
+                        .unwrap_or(last)
+                        .replace('-', " ")
+                        .replace('_', " ");
+                    if !name.is_empty() && name.len() < 100 {
+                        return format!("IMG {}", name);
+                    }
+                }
+            }
+        }
+        format!("Image {}", url.len() % 1000)
     }
 
     /// Extract image URLs from HTML.
