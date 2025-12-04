@@ -1,0 +1,109 @@
+{
+  "showcase": "DX-Media Unified Search Showcase",
+  "generated": "2024-12-05",
+  "description": "Interactive demonstration of concurrent search across ALL providers and scrapers",
+  
+  "search_capabilities": {
+    "providers": [
+      "cleveland", "dpla", "europeana", "freesound", "giphy", 
+      "loc", "met", "nasa", "openverse", "pexels", "picsum", 
+      "pixabay", "polyhaven", "rijksmuseum", "smithsonian", 
+      "unsplash", "wikimedia"
+    ],
+    "scrapers": ["flickr", "nasa-gallery"],
+    "total_sources": 12,
+    "concurrent": true,
+    "technology": "Rust async/tokio with futures::future::join_all"
+  },
+
+  "result_files": {
+    "01_single_provider_nasa.json": {
+      "description": "Single provider search (NASA)",
+      "query": "mars rover",
+      "count_requested": 10,
+      "assets_returned": 10,
+      "providers": ["nasa"]
+    },
+    "02_multi_provider_museums.json": {
+      "description": "Multi-provider search (Museums)",
+      "query": "landscape painting",
+      "count_requested": 5,
+      "assets_returned": 15,
+      "providers": ["met", "rijksmuseum", "cleveland"]
+    },
+    "03_all_free_providers.json": {
+      "description": "All free providers search",
+      "query": "sunset mountains",
+      "count_requested": 5,
+      "assets_returned": 31,
+      "providers": "ALL FREE (no API key required)"
+    },
+    "04_unified_all_sources.json": {
+      "description": "UNIFIED search (ALL providers + scrapers)",
+      "query": "ocean waves",
+      "count_requested": 5,
+      "assets_returned": 37,
+      "providers": "ALL (10 providers + 2 scrapers)",
+      "sources_returned": ["europeana", "met", "loc", "cleveland", "wikimedia", "nasa", "openverse", "polyhaven", "rijksmuseum", "scraper:flickr", "scraper:nasa-gallery"]
+    },
+    "05_audio_search.json": {
+      "description": "Audio-only media type search",
+      "query": "ambient music",
+      "count_requested": 5,
+      "assets_returned": 8,
+      "media_type": "audio"
+    },
+    "06_europeana_heritage.json": {
+      "description": "High-volume cultural heritage search",
+      "query": "medieval art",
+      "count_requested": 20,
+      "assets_returned": 20,
+      "providers": ["europeana"]
+    },
+    "07_polyhaven_3d.json": {
+      "description": "3D textures and HDRI search",
+      "query": "wood texture",
+      "count_requested": 10,
+      "assets_returned": 10,
+      "providers": ["polyhaven"]
+    }
+  },
+
+  "cli_commands": {
+    "basic_search": "dx search \"ocean\" -n 5 --format json",
+    "unified_search": "dx search \"sunset\" --all -n 3 --format json",
+    "provider_filter": "dx search \"forest\" --providers wikimedia,nasa,met -n 5 --format json",
+    "audio_search": "dx search \"ambient\" -t audio --format json",
+    "list_providers": "dx providers"
+  },
+
+  "performance": {
+    "single_provider": "~0.9 seconds for 10 results",
+    "multi_provider": "~6.3 seconds for 15 results (3 providers)",
+    "all_free": "~12.6 seconds for 31 results (10 providers)",
+    "unified_search": "~17 seconds for 37 results (12 sources)",
+    "concurrency": "All sources queried in parallel using tokio::join!"
+  },
+
+  "asset_schema": {
+    "id": "Unique asset identifier",
+    "provider": "Source provider name",
+    "title": "Asset title/name",
+    "author": "Creator/author name",
+    "author_url": "Link to author profile",
+    "download_url": "Direct download URL",
+    "preview_url": "Preview/thumbnail URL",
+    "source_url": "Original source page",
+    "media_type": "image | audio | video | document",
+    "width": "Width in pixels (images)",
+    "height": "Height in pixels (images)",
+    "license": "License type (CC0, CC-BY, etc.)",
+    "tags": "Array of tags/keywords"
+  },
+
+  "total_showcase_stats": {
+    "result_files": 7,
+    "total_assets": 131,
+    "unique_providers_tested": 12
+  }
+}

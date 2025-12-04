@@ -1,0 +1,191 @@
+{
+  "assets": [
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA07081/PIA07081~small.jpg",
+      "height": null,
+      "id": "PIA07081",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA07081/PIA07081~small.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA07081/collection.json",
+      "tags": [
+        "Mars",
+        "Mars Exploration Rover MER"
+      ],
+      "title": "Mars Rover Studies Soil on Mars",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA07108/PIA07108~thumb.jpg",
+      "height": null,
+      "id": "PIA07108",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA07108/PIA07108~thumb.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA07108/collection.json",
+      "tags": [
+        "Mars",
+        "Mars Exploration Rover MER"
+      ],
+      "title": "Frost on Mars Rover Opportunity",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA04413/PIA04413~medium.jpg",
+      "height": null,
+      "id": "PIA04413",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA04413/PIA04413~medium.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA04413/collection.json",
+      "tags": [
+        "Mars Exploration Rover MER"
+      ],
+      "title": "Artist Concept of Rover on Mars",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA04824/PIA04824~small.jpg",
+      "height": null,
+      "id": "PIA04824",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA04824/PIA04824~small.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA04824/collection.json",
+      "tags": [
+        "Mars",
+        "Mars Exploration Rover MER"
+      ],
+      "title": "Mars Exploration Rover",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA04823/PIA04823~small.jpg",
+      "height": null,
+      "id": "PIA04823",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA04823/PIA04823~small.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA04823/collection.json",
+      "tags": [
+        "Mars",
+        "Mars Exploration Rover MER"
+      ],
+      "title": "Mars Exploration Rover",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA04825/PIA04825~thumb.jpg",
+      "height": null,
+      "id": "PIA04825",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA04825/PIA04825~thumb.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA04825/collection.json",
+      "tags": [
+        "Mars",
+        "Mars Exploration Rover MER"
+      ],
+      "title": "Mars Exploration Rover",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA22103/PIA22103~medium.jpg",
+      "height": null,
+      "id": "PIA22103",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA22103/PIA22103~medium.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA22103/collection.json",
+      "tags": [
+        "Mars 2020 Rover",
+        "cameras"
+      ],
+      "title": "Cameras on Mars 2020 Rover",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA18405/PIA18405~small.jpg",
+      "height": null,
+      "id": "PIA18405",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA18405/PIA18405~small.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA18405/collection.json",
+      "tags": [
+        "Mars 2020 Rover"
+      ],
+      "title": "Payload for NASA Mars 2020 Rover",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA15115/PIA15115~medium.jpg",
+      "height": null,
+      "id": "PIA15115",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA15115/PIA15115~medium.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA15115/collection.json",
+      "tags": [
+        "Mars",
+        "Mars Exploration Rover MER"
+      ],
+      "title": "Dusty Mars Rover Self Portrait",
+      "width": null
+    },
+    {
+      "author": "JPL",
+      "author_url": null,
+      "download_url": "https://images-assets.nasa.gov/image/PIA04822/PIA04822~thumb.jpg",
+      "height": null,
+      "id": "PIA04822",
+      "license": "Public Domain",
+      "media_type": "image",
+      "preview_url": "https://images-assets.nasa.gov/image/PIA04822/PIA04822~thumb.jpg",
+      "provider": "nasa",
+      "source_url": "https://images-assets.nasa.gov/image/PIA04822/collection.json",
+      "tags": [
+        "Mars",
+        "Mars Exploration Rover MER"
+      ],
+      "title": "Mars Exploration Rover",
+      "width": null
+    }
+  ],
+  "duration_ms": 832,
+  "media_type": null,
+  "provider_errors": [],
+  "providers_searched": [
+    "nasa"
+  ],
+  "query": "mars rover",
+  "returned_count": 10,
+  "total_count": 5706
+}

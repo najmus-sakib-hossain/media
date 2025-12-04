@@ -1,0 +1,7 @@
+error: unexpected argument '--type' found
+
+  tip: to pass '--type' as a value, use '-- --type'
+
+Usage: dx.exe search --all <QUERY>...
+
+For more information, try '--help'.

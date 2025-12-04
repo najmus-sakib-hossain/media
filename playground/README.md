@@ -80,19 +80,70 @@ cargo test --test playground_integration -- --nocapture
 
 ## CLI Usage Examples
 
-Search for media:
+### Basic Search (Single Provider)
 ```bash
 ./target/release/dx search "nature" --providers openverse -n 5
+./target/release/dx search "flower" --providers wikimedia -n 5 --format json
 ```
 
-Download media:
+### 🚀 Unified Search (ALL Providers + Scrapers)
+The `--all` flag enables **concurrent search** across ALL 10 providers + 2 scrapers simultaneously using Rust's async/tokio:
+
+```bash
+# Search ALL sources concurrently - returns 40-50+ results in ~4-5 seconds
+./target/release/dx search "sunset" --all -n 5 --format json
+
+# With type filter (image, audio, video, document)
+./target/release/dx search "ocean" --all --type image --format json
+
+# Compact JSON output
+./target/release/dx search "mountains" --all --format json-compact
+```
+
+**Available Providers (10):** cleveland, dpla, europeana, freesound, giphy, loc, met, nasa, openverse, pexels, picsum, pixabay, polyhaven, rijksmuseum, smithsonian, unsplash, wikimedia
+
+**Available Scrapers (2):** Flickr, NASA Gallery
+
+### Download media
 ```bash
 ./target/release/dx search "flower" --providers wikimedia -n 1 --download -o playground/assets/images/
 ```
 
-List available providers:
+### List available providers
 ```bash
 ./target/release/dx providers
+```
+
+## Search Showcase (Interactive)
+
+Run the interactive search showcase script to test all search modes:
+
+```bash
+# Make executable and run
+chmod +x playground/search_showcase.sh
+./playground/search_showcase.sh
+
+# Or run directly with bash
+bash playground/search_showcase.sh
+```
+
+This generates JSON result files in `playground/results/`:
+- `01_basic_search.json` - Single provider search
+- `02_unified_search.json` - All providers + scrapers (concurrent)
+- `03_type_filter.json` - Image type filter
+- `04_provider_filter.json` - Specific provider search
+- `05_orientation_filter.json` - Portrait/landscape filter
+- `06_color_filter.json` - Color theme filter
+
+### Results Directory Structure
+```
+playground/results/
+├── 01_basic_search.json       # 5 results, ~1.2s
+├── 02_unified_search.json     # 40-50 results, ~4.5s
+├── 03_type_filter.json        # Filtered by type
+├── 04_provider_filter.json    # From specific provider
+├── 05_orientation_filter.json # Portrait/landscape
+└── 06_color_filter.json       # Color theme filter
 ```
 
 ## Test Results
