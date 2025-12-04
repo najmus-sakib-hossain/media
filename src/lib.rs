@@ -5,7 +5,7 @@
 //! One command. Any media. From anywhere.
 //!
 //! DX Media provides a unified interface to search and download digital assets
-//! from 50+ free API providers including Unsplash, Pexels, Pixabay, and more.
+//! from 13 FREE API providers (no API keys required) with access to 890M+ assets.
 //!
 //! ## Quick Start
 //!
@@ -35,10 +35,12 @@
 //!
 //! ## Features
 //!
-//! - **Universal Search**: One query syntax for 50+ providers
+//! - **Universal Search**: One query syntax for all FREE providers
 //! - **Smart Downloads**: Async, parallel, with progress tracking
 //! - **Rate Limiting**: Automatic throttling per provider
 //! - **Dual Mode**: Use as CLI (`dx`) or Rust library
+//! - **No API Keys Required**: All 13 providers work out of the box
+//! - **890M+ Assets**: Massive coverage across images, audio, video, and 3D
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
@@ -91,12 +93,18 @@ pub use types::{License, MediaAsset, MediaType, SearchQuery, SearchResult};
 // Re-export engine components
 pub use engine::{Downloader, FileManager, Scraper, ScrapeOptions, ScrapeResult, SearchEngine};
 
-// Re-export providers (12+ providers with 1+ billion assets)
+// Re-export providers (13 FREE providers with 890M+ assets - NO API KEYS REQUIRED)
 pub use providers::{
-    InternetArchiveProvider, FreesoundProvider, GiphyProvider, LoremPicsumProvider,
-    MetMuseumProvider, NasaImagesProvider, OpenverseProvider, PexelsProvider,
-    PixabayProvider, ProviderRegistry, SmithsonianProvider, UnsplashProvider,
-    WikimediaCommonsProvider,
+    // Tier 1: High-volume providers (700M+)
+    OpenverseProvider, WikimediaCommonsProvider, EuropeanaProvider, DplaProvider,
+    InternetArchiveProvider, LibraryOfCongressProvider,
+    // Tier 2: Museum providers
+    RijksmuseumProvider, MetMuseumProvider, NasaImagesProvider, 
+    ClevelandMuseumProvider, ArtInstituteChicagoProvider,
+    // Tier 3: 3D & Utility providers
+    PolyHavenProvider, LoremPicsumProvider,
+    // Registry
+    ProviderRegistry,
 };
 
 /// Library version

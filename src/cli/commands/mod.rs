@@ -46,9 +46,7 @@ async fn config_command(format: crate::cli::args::OutputFormat) -> Result<()> {
                 "download_dir": config.download_dir,
                 "timeout_secs": config.timeout_secs,
                 "retry_attempts": config.retry_attempts,
-                "unsplash_key_set": config.unsplash_access_key.is_some(),
-                "pexels_key_set": config.pexels_api_key.is_some(),
-                "pixabay_key_set": config.pixabay_api_key.is_some(),
+                "providers": "All providers are FREE - no API keys required",
             });
             println!("{}", serde_json::to_string_pretty(&json)?);
         }
@@ -59,10 +57,9 @@ async fn config_command(format: crate::cli::args::OutputFormat) -> Result<()> {
             println!("  {} {} seconds", "Timeout:".dimmed(), config.timeout_secs);
             println!("  {} {}", "Retry Attempts:".dimmed(), config.retry_attempts);
             println!();
-            println!("{}", "API Keys:".bold());
-            println!("  {} {}", "Unsplash:".dimmed(), if config.unsplash_access_key.is_some() { "✓ Set".green() } else { "✗ Not set".red() });
-            println!("  {} {}", "Pexels:".dimmed(), if config.pexels_api_key.is_some() { "✓ Set".green() } else { "✗ Not set".red() });
-            println!("  {} {}", "Pixabay:".dimmed(), if config.pixabay_api_key.is_some() { "✓ Set".green() } else { "✗ Not set".red() });
+            println!("{}", "Providers:".bold());
+            println!("  {} {}", "Status:".dimmed(), "All 6 providers are FREE - no API keys required!".green());
+            println!("  {} Openverse, Wikimedia, NASA, Archive, Met Museum, Picsum", "Available:".dimmed());
         }
     }
 

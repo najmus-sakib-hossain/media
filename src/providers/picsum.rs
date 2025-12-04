@@ -116,7 +116,7 @@ impl Provider for LoremPicsumProvider {
                     .preview_url(preview_url)
                     .source_url(img.url)
                     .author(img.author)
-                    .license(License::Unsplash)
+                    .license(License::Other("Unsplash".to_string()))
                     .dimensions(img.width, img.height)
                     .build()
             })

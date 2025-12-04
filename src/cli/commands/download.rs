@@ -94,7 +94,7 @@ fn parse_asset_id(asset_id: &str) -> Result<(&str, &str)> {
     if let Some((provider, id)) = asset_id.split_once(':') {
         Ok((provider, id))
     } else {
-        // Default to unsplash if no provider specified
-        Ok(("unsplash", asset_id))
+        // Default to openverse if no provider specified
+        Ok(("openverse", asset_id))
     }
 }

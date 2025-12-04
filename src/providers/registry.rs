@@ -1,4 +1,6 @@
 //! Provider registry for managing all media providers.
+//!
+//! All providers are FREE and require NO API keys.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -7,26 +9,29 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::providers::traits::Provider;
 use crate::providers::{
-    InternetArchiveProvider, FreesoundProvider, GiphyProvider, LoremPicsumProvider,
-    MetMuseumProvider, NasaImagesProvider, OpenverseProvider, PexelsProvider, 
-    PixabayProvider, SmithsonianProvider, UnsplashProvider, WikimediaCommonsProvider,
+    InternetArchiveProvider, LoremPicsumProvider,
+    MetMuseumProvider, NasaImagesProvider, OpenverseProvider,
+    WikimediaCommonsProvider, LibraryOfCongressProvider, EuropeanaProvider,
+    DplaProvider, RijksmuseumProvider, ArtInstituteChicagoProvider,
+    ClevelandMuseumProvider, PolyHavenProvider,
 };
 use crate::types::{MediaType, SearchQuery, SearchResult};
 
 /// Registry for managing and querying media providers.
 /// 
-/// Provides access to 12+ providers with 1+ billion total assets:
+/// All 13 providers are FREE and require NO API keys:
 /// - Openverse: 700M+ images and audio (CC/CC0)
 /// - Wikimedia Commons: 92M+ files
+/// - Europeana: 50M+ European cultural heritage items
+/// - DPLA: 40M+ American cultural heritage items
 /// - Internet Archive: Millions of items
-/// - Unsplash: 5M+ photos
-/// - Pexels: 3.5M+ photos and videos
-/// - Pixabay: 4.2M+ images and videos
-/// - NASA: 140K+ space images
-/// - Smithsonian: 4.5M+ museum items (CC0)
+/// - Library of Congress: 3M+ public domain images
+/// - Rijksmuseum: 700K+ Dutch masterpieces (CC0)
 /// - Met Museum: 500K+ artworks (CC0)
-/// - Freesound: 600K+ sound effects
-/// - Giphy: Millions of GIFs
+/// - NASA: 140K+ space images
+/// - Cleveland Museum: 61K+ artworks (CC0)
+/// - Art Institute Chicago: 50K+ artworks (CC0)
+/// - Poly Haven: 3.7K+ 3D models, textures, HDRIs (CC0)
 /// - Lorem Picsum: Unlimited placeholder images
 pub struct ProviderRegistry {
     providers: HashMap<String, Arc<dyn Provider>>,
@@ -47,7 +52,7 @@ impl ProviderRegistry {
         let mut providers: HashMap<String, Arc<dyn Provider>> = HashMap::new();
 
         // ═══════════════════════════════════════════════════════════════════
-        // TIER 1: High-Volume API Providers (700M+ assets)
+        // TIER 1: High-Volume Providers (700M+ assets) - NO API KEY REQUIRED
         // ═══════════════════════════════════════════════════════════════════
         
         // Openverse - 700M+ images and audio (no API key required)
@@ -58,58 +63,54 @@ impl ProviderRegistry {
         let wikimedia = WikimediaCommonsProvider::new(config);
         providers.insert(wikimedia.name().to_string(), Arc::new(wikimedia));
 
+        // Europeana - 50M+ European cultural heritage items
+        let europeana = EuropeanaProvider::new(config);
+        providers.insert(europeana.name().to_string(), Arc::new(europeana));
+
+        // DPLA - 40M+ American cultural heritage items
+        let dpla = DplaProvider::new(config);
+        providers.insert(dpla.name().to_string(), Arc::new(dpla));
+
         // Internet Archive - Millions of items (no API key required)
         let archive = InternetArchiveProvider::new(config);
         providers.insert(archive.name().to_string(), Arc::new(archive));
 
-        // ═══════════════════════════════════════════════════════════════════
-        // TIER 2: Popular Stock Photo Providers (12M+ assets)
-        // ═══════════════════════════════════════════════════════════════════
-        
-        // Unsplash - 5M+ photos
-        let unsplash = UnsplashProvider::new(config);
-        providers.insert(unsplash.name().to_string(), Arc::new(unsplash));
-
-        // Pexels - 3.5M+ photos and videos
-        let pexels = PexelsProvider::new(config);
-        providers.insert(pexels.name().to_string(), Arc::new(pexels));
-
-        // Pixabay - 4.2M+ images, videos, vectors
-        let pixabay = PixabayProvider::new(config);
-        providers.insert(pixabay.name().to_string(), Arc::new(pixabay));
+        // Library of Congress - 3M+ public domain images
+        let loc = LibraryOfCongressProvider::new(config);
+        providers.insert(loc.name().to_string(), Arc::new(loc));
 
         // ═══════════════════════════════════════════════════════════════════
-        // TIER 3: Specialized Providers (5M+ assets)
+        // TIER 2: Museum Providers - NO API KEY REQUIRED
         // ═══════════════════════════════════════════════════════════════════
         
-        // NASA Images - 140K+ space images (no API key required)
-        let nasa = NasaImagesProvider::new(config);
-        providers.insert(nasa.name().to_string(), Arc::new(nasa));
-
-        // Smithsonian - 4.5M+ museum items
-        let smithsonian = SmithsonianProvider::new(config);
-        providers.insert(smithsonian.name().to_string(), Arc::new(smithsonian));
+        // Rijksmuseum - 700K+ Dutch masterpieces (CC0)
+        let rijksmuseum = RijksmuseumProvider::new(config);
+        providers.insert(rijksmuseum.name().to_string(), Arc::new(rijksmuseum));
 
         // Met Museum - 500K+ artworks (no API key required)
         let met = MetMuseumProvider::new(config);
         providers.insert(met.name().to_string(), Arc::new(met));
 
+        // NASA Images - 140K+ space images (no API key required)
+        let nasa = NasaImagesProvider::new(config);
+        providers.insert(nasa.name().to_string(), Arc::new(nasa));
+
+        // Cleveland Museum - 61K+ artworks (CC0)
+        let cleveland = ClevelandMuseumProvider::new(config);
+        providers.insert(cleveland.name().to_string(), Arc::new(cleveland));
+
+        // Art Institute Chicago - 50K+ artworks (CC0)
+        let artic = ArtInstituteChicagoProvider::new(config);
+        providers.insert(artic.name().to_string(), Arc::new(artic));
+
         // ═══════════════════════════════════════════════════════════════════
-        // TIER 4: Audio & GIF Providers (600K+ assets)
+        // TIER 3: 3D & Utility Providers - NO API KEY REQUIRED
         // ═══════════════════════════════════════════════════════════════════
         
-        // Freesound - 600K+ sound effects
-        let freesound = FreesoundProvider::new(config);
-        providers.insert(freesound.name().to_string(), Arc::new(freesound));
+        // Poly Haven - 3.7K+ 3D models, textures, HDRIs (CC0)
+        let polyhaven = PolyHavenProvider::new(config);
+        providers.insert(polyhaven.name().to_string(), Arc::new(polyhaven));
 
-        // Giphy - Millions of GIFs
-        let giphy = GiphyProvider::new(config);
-        providers.insert(giphy.name().to_string(), Arc::new(giphy));
-
-        // ═══════════════════════════════════════════════════════════════════
-        // TIER 5: Utility Providers (Unlimited)
-        // ═══════════════════════════════════════════════════════════════════
-        
         // Lorem Picsum - Unlimited placeholder images (no API key required)
         let picsum = LoremPicsumProvider::new(config);
         providers.insert(picsum.name().to_string(), Arc::new(picsum));
@@ -274,16 +275,26 @@ mod tests {
         let config = Config::default();
         let registry = ProviderRegistry::new(&config);
         
-        // All providers should be registered
-        assert!(registry.has_provider("unsplash"));
-        assert!(registry.has_provider("pexels"));
-        assert!(registry.has_provider("pixabay"));
+        // All FREE providers should be registered (no API keys required)
+        // Tier 1: High-volume providers
         assert!(registry.has_provider("openverse"));
         assert!(registry.has_provider("wikimedia"));
-        assert!(registry.has_provider("nasa"));
+        assert!(registry.has_provider("europeana"));
+        assert!(registry.has_provider("dpla"));
         assert!(registry.has_provider("archive"));
+        assert!(registry.has_provider("loc"));
+        
+        // Tier 2: Museum providers
+        assert!(registry.has_provider("rijksmuseum"));
         assert!(registry.has_provider("met"));
+        assert!(registry.has_provider("nasa"));
+        assert!(registry.has_provider("cleveland"));
+        assert!(registry.has_provider("artic"));
+        
+        // Tier 3: 3D & Utility providers
+        assert!(registry.has_provider("polyhaven"));
         assert!(registry.has_provider("picsum"));
+        
         assert!(!registry.has_provider("nonexistent"));
     }
 
@@ -293,11 +304,10 @@ mod tests {
         let registry = ProviderRegistry::new(&config);
         
         let stats = registry.stats();
-        // We now have 12 providers
-        assert_eq!(stats.total, 12);
-        // Providers without API key requirements should be available:
-        // openverse, wikimedia, archive, nasa, met, picsum = 6
-        assert!(stats.available >= 6);
+        // We now have 13 FREE providers (no API keys required)
+        assert_eq!(stats.total, 13);
+        // All providers are available since none require API keys
+        assert_eq!(stats.available, 13);
     }
 
     #[test]
@@ -305,8 +315,8 @@ mod tests {
         let config = Config::default();
         let registry = ProviderRegistry::new(&config);
         
-        let provider = registry.get("unsplash");
+        let provider = registry.get("openverse");
         assert!(provider.is_some());
-        assert_eq!(provider.unwrap().name(), "unsplash");
+        assert_eq!(provider.unwrap().name(), "openverse");
     }
 }

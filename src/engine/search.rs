@@ -168,13 +168,13 @@ mod tests {
             .media_type(MediaType::Image)
             .count(20)
             .page(2)
-            .provider("unsplash")
+            .provider("openverse")
             .build();
 
         assert_eq!(query.query, "nature");
         assert_eq!(query.media_type, Some(MediaType::Image));
         assert_eq!(query.count, 20);
         assert_eq!(query.page, 2);
-        assert_eq!(query.providers, vec!["unsplash".to_string()]);
+        assert_eq!(query.providers, vec!["openverse".to_string()]);
     }
 }

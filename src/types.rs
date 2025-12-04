@@ -126,12 +126,6 @@ pub enum License {
     /// Creative Commons Attribution NonCommercial
     #[strum(serialize = "CC-BY-NC")]
     CcByNc,
-    /// Unsplash License
-    Unsplash,
-    /// Pexels License
-    Pexels,
-    /// Pixabay License
-    Pixabay,
     /// Public Domain
     PublicDomain,
     /// Custom or unspecified license
@@ -147,9 +141,6 @@ impl License {
             Self::CcBy => "CC-BY",
             Self::CcBySa => "CC-BY-SA",
             Self::CcByNc => "CC-BY-NC",
-            Self::Unsplash => "Unsplash",
-            Self::Pexels => "Pexels",
-            Self::Pixabay => "Pixabay",
             Self::PublicDomain => "Public Domain",
             Self::Other(s) => s.as_str(),
         }

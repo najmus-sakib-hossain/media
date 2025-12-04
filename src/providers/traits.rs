@@ -9,7 +9,7 @@ use crate::types::{MediaType, RateLimitConfig, SearchQuery, SearchResult};
 
 /// Trait for media asset providers.
 ///
-/// Each provider (Unsplash, Pexels, etc.) implements this trait to provide
+/// Each provider (Openverse, Wikimedia, NASA, etc.) implements this trait to provide
 /// a unified interface for searching and downloading assets.
 #[async_trait]
 pub trait Provider: Send + Sync {

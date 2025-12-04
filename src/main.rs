@@ -2,7 +2,7 @@
 //!
 //! Usage:
 //!   dx search "sunset mountains" --type image
-//!   dx download unsplash:abc123
+//!   dx download openverse:abc123
 //!   dx providers --available
 
 use std::process::ExitCode;

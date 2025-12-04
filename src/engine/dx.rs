@@ -83,7 +83,7 @@ impl DxMedia {
     /// let results = dx.search("nature")
     ///     .media_type(MediaType::Image)
     ///     .count(20)
-    ///     .provider("unsplash")
+    ///     .provider("openverse")
     ///     .execute()
     ///     .await?;
     /// # Ok(())
@@ -232,16 +232,16 @@ mod tests {
             .media_type(MediaType::Image)
             .count(25)
             .page(2)
-            .provider("unsplash")
-            .provider("pexels")
+            .provider("openverse")
+            .provider("wikimedia")
             .build();
 
         assert_eq!(query.query, "test query");
         assert_eq!(query.media_type, Some(MediaType::Image));
         assert_eq!(query.count, 25);
         assert_eq!(query.page, 2);
-        assert!(query.providers.contains(&"unsplash".to_string()));
-        assert!(query.providers.contains(&"pexels".to_string()));
+        assert!(query.providers.contains(&"openverse".to_string()));
+        assert!(query.providers.contains(&"wikimedia".to_string()));
     }
 
     #[test]
@@ -250,8 +250,12 @@ mod tests {
         let dx = DxMedia::with_config(config).unwrap();
 
         let all = dx.all_providers();
-        assert!(all.contains(&"unsplash".to_string()));
-        assert!(all.contains(&"pexels".to_string()));
-        assert!(all.contains(&"pixabay".to_string()));
+        // All 6 FREE providers should be available
+        assert!(all.contains(&"openverse".to_string()));
+        assert!(all.contains(&"wikimedia".to_string()));
+        assert!(all.contains(&"nasa".to_string()));
+        assert!(all.contains(&"archive".to_string()));
+        assert!(all.contains(&"met".to_string()));
+        assert!(all.contains(&"picsum".to_string()));
     }
 }

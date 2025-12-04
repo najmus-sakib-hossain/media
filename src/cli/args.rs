@@ -8,10 +8,10 @@ use clap::{Parser, Subcommand, ValueEnum};
     name = "dx",
     version,
     author,
-    about = "Universal digital asset acquisition from 50+ free APIs",
+    about = "Universal digital asset acquisition from 6 FREE APIs (no API keys required)",
     long_about = "DX Media is a powerful CLI tool for searching and downloading \
-                  royalty-free media assets from multiple providers including \
-                  Unsplash, Pexels, Pixabay, and more."
+                  royalty-free media assets from 6 free providers including \
+                  Openverse, Wikimedia, NASA, Archive, Met Museum, and Lorem Picsum."
 )]
 pub struct Args {
     /// Subcommand to execute.

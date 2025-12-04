@@ -24,7 +24,7 @@ impl FileManager {
         }
     }
 
-    /// Enable organization by provider name (e.g., downloads/unsplash/).
+    /// Enable organization by provider name (e.g., downloads/openverse/).
     #[must_use]
     pub fn organize_by_provider(mut self, enable: bool) -> Self {
         self.organize_by_provider = enable;
