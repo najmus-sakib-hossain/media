@@ -185,16 +185,47 @@ impl DxMedia {
     /// # }
     /// ```
     pub async fn search_all(&self, query: &str, count_per_source: usize) -> Result<SearchResult> {
+        use crate::types::SearchMode;
+        self.search_all_with_mode(query, count_per_source, SearchMode::default()).await
+    }
+
+    /// Search all providers AND scrapers concurrently with explicit search mode.
+    /// 
+    /// # Search Modes
+    /// - **Quantity** (default): Fast early-exit after 3x results. Skips slow sources.
+    /// - **Quality**: Waits for ALL providers/scrapers to respond (or timeout).
+    /// 
+    /// # Example
+    /// 
+    /// ```no_run
+    /// # use dx_media::{DxMedia, SearchMode};
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let dx = DxMedia::new()?;
+    /// // Quality mode - wait for all providers
+    /// let results = dx.search_all_with_mode("sunset", 10, SearchMode::Quality).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn search_all_with_mode(
+        &self, 
+        query: &str, 
+        count_per_source: usize,
+        mode: crate::types::SearchMode,
+    ) -> Result<SearchResult> {
+        use crate::types::SearchMode;
         use std::time::{Instant, Duration};
         use futures::stream::{FuturesUnordered, StreamExt};
         
         let start = Instant::now();
         
-        // AGGRESSIVE timeout for scrapers (3 seconds max - was 5s)
-        let scraper_timeout = Duration::from_secs(3);
+        // Timeout varies by mode: Quantity=fast, Quality=patient
+        let scraper_timeout = match mode {
+            SearchMode::Quantity => Duration::from_secs(3),
+            SearchMode::Quality => Duration::from_secs(6),
+        };
 
-        // Build search query for providers
-        let search_query = SearchQuery::new(query).count(count_per_source);
+        // Build search query for providers with mode
+        let search_query = SearchQuery::new(query).count(count_per_source).mode(mode);
         
         // Create scraper for web scraping
         let scraper = Scraper::new()?;

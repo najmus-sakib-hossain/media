@@ -91,7 +91,7 @@ pub mod cli;
 pub use config::Config;
 pub use engine::DxMedia;
 pub use error::{DxError, Result};
-pub use types::{License, MediaAsset, MediaType, SearchQuery, SearchResult};
+pub use types::{License, MediaAsset, MediaType, SearchMode, SearchQuery, SearchResult};
 
 // Re-export engine components
 pub use engine::{Downloader, FileManager, ScrapeOptions, ScrapeResult, Scraper, SearchEngine};

@@ -23,16 +23,23 @@ pub async fn execute(args: SearchArgs, format: OutputFormat, quiet: bool) -> Res
                 .unwrap(),
         );
         let search_type = if args.all { "all providers & scrapers" } else { "providers" };
-        pb.set_message(format!("Searching {} for '{}'...", search_type, args.query_string()));
+        let mode_str = match args.mode {
+            crate::cli::args::SearchModeArg::Quantity => "⚡ quantity",
+            crate::cli::args::SearchModeArg::Quality => "🎯 quality",
+        };
+        pb.set_message(format!("Searching {} for '{}' ({} mode)...", search_type, args.query_string(), mode_str));
         pb.enable_steady_tick(std::time::Duration::from_millis(80));
         Some(pb)
     } else {
         None
     };
 
+    // Convert CLI mode to types::SearchMode
+    let search_mode: crate::types::SearchMode = args.mode.into();
+
     // Execute search - use unified search if --all is specified
     let result = if args.all {
-        dx.search_all(&args.query_string(), args.count).await?
+        dx.search_all_with_mode(&args.query_string(), args.count, search_mode).await?
     } else {
         // Build the search query for regular search
         let mut query = SearchQuery::new(args.query_string());
@@ -42,6 +49,7 @@ pub async fn execute(args: SearchArgs, format: OutputFormat, quiet: bool) -> Res
         query.providers = args.providers.clone();
         query.orientation = args.orientation.map(Into::into);
         query.color = args.color.clone();
+        query.mode = search_mode;
         
         dx.search_query(&query).await?
     };

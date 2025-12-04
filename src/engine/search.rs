@@ -47,11 +47,19 @@ impl SearchEngine {
 
     /// Search specific providers by name (concurrently with timeouts).
     async fn search_specific_providers(&self, query: &SearchQuery) -> Result<SearchResult> {
+        use crate::types::SearchMode;
         use futures::stream::{FuturesUnordered, StreamExt};
         use std::time::Duration;
         
-        // AGGRESSIVE per-provider timeout (5 seconds max - was 8s)
-        let provider_timeout = Duration::from_secs(5);
+        // Timeout varies by mode: Quantity=fast (5s), Quality=patient (8s)
+        let provider_timeout = match query.mode {
+            SearchMode::Quantity => Duration::from_secs(5),
+            SearchMode::Quality => Duration::from_secs(8),
+        };
+        
+        // Early exit only in Quantity mode
+        let early_exit_threshold = query.count * 3;
+        let use_early_exit = query.mode.is_quantity();
         
         // Create FuturesUnordered for concurrent execution
         let mut futures: FuturesUnordered<_> = query
@@ -67,11 +75,12 @@ impl SearchEngine {
                         registry.search_provider(&provider_name, &query)
                     ).await;
                     
+                    let timeout_msg = format!("Provider timed out (>{}s)", provider_timeout.as_secs());
                     match result {
                         Ok(search_result) => (provider_name, search_result),
                         Err(_) => (provider_name.clone(), Err(crate::error::DxError::ProviderApi {
                             provider: provider_name,
-                            message: "Provider timed out (>5s)".to_string(),
+                            message: timeout_msg,
                             status_code: 408,
                         })),
                     }
@@ -84,6 +93,7 @@ impl SearchEngine {
         let mut providers_searched = Vec::new();
         let mut provider_errors = Vec::new();
         let mut total_count = 0;
+        let mut skipped_slow_providers = 0;
 
         while let Some((provider_name, result)) = futures.next().await {
             providers_searched.push(provider_name.clone());
@@ -97,6 +107,20 @@ impl SearchEngine {
                     provider_errors.push((provider_name, e.to_string()));
                 }
             }
+            
+            // Early exit in Quantity mode
+            if use_early_exit && all_assets.len() >= early_exit_threshold && !futures.is_empty() {
+                skipped_slow_providers = futures.len();
+                drop(futures);
+                break;
+            }
+        }
+        
+        if skipped_slow_providers > 0 {
+            provider_errors.push((
+                "early_exit".to_string(),
+                format!("Skipped {} slow providers (had {} results)", skipped_slow_providers, all_assets.len())
+            ));
         }
 
         if all_assets.is_empty() && !provider_errors.is_empty() {

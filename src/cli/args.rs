@@ -104,6 +104,10 @@ pub struct SearchArgs {
     /// Search ALL providers and scrapers concurrently for maximum results.
     #[arg(long)]
     pub all: bool,
+
+    /// Search mode: quantity (fast, early-exit) or quality (wait for all providers).
+    #[arg(short = 'm', long, value_enum, default_value = "quantity")]
+    pub mode: SearchModeArg,
 }
 
 impl SearchArgs {
@@ -239,6 +243,27 @@ pub enum OutputFormat {
     Tsv,
 }
 
+/// Search mode argument.
+#[derive(Debug, Clone, Copy, Default, ValueEnum)]
+pub enum SearchModeArg {
+    /// Fast mode: Early exit after gathering enough results (3x count).
+    /// Skips slow providers for speed. DEFAULT mode.
+    #[default]
+    Quantity,
+    /// Thorough mode: Wait for ALL providers to respond (or timeout).
+    /// Gets comprehensive results from every source.
+    Quality,
+}
+
+impl From<SearchModeArg> for crate::types::SearchMode {
+    fn from(arg: SearchModeArg) -> Self {
+        match arg {
+            SearchModeArg::Quantity => crate::types::SearchMode::Quantity,
+            SearchModeArg::Quality => crate::types::SearchMode::Quality,
+        }
+    }
+}
+
 impl Args {
     /// Parse command-line arguments.
     #[must_use]
@@ -264,6 +289,7 @@ mod tests {
             download: false,
             output: None,
             all: false,
+            mode: SearchModeArg::Quantity,
         };
 
         assert_eq!(args.query_string(), "sunset mountains");

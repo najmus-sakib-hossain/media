@@ -299,10 +299,11 @@ impl ProviderRegistry {
     /// Uses `FuturesUnordered` for optimal performance - results are processed
     /// as they arrive, and slow providers are timed out after 5 seconds.
     /// 
-    /// # Early Exit Optimization
-    /// If we gather enough results quickly (3x requested count), we stop waiting
-    /// for slow providers - giving users results FAST.
+    /// # Search Modes
+    /// - **Quantity** (default): Early exit after 3x results - FAST but may skip slow providers
+    /// - **Quality**: Waits for ALL providers to respond - thorough but slower
     pub async fn search_all(&self, query: &SearchQuery) -> Result<SearchResult> {
+        use crate::types::SearchMode;
         use futures::stream::{FuturesUnordered, StreamExt};
         use std::time::Duration;
         
@@ -317,12 +318,16 @@ impl ProviderRegistry {
             });
         }
 
-        // AGGRESSIVE TIMEOUT: 5 seconds max per provider (was 8s)
-        let provider_timeout = Duration::from_secs(5);
+        // AGGRESSIVE TIMEOUT: 5 seconds max per provider
+        // In Quality mode, we use 8 seconds to give slow providers more time
+        let provider_timeout = match query.mode {
+            SearchMode::Quantity => Duration::from_secs(5),
+            SearchMode::Quality => Duration::from_secs(8),
+        };
         
-        // Early exit threshold: stop after 3x requested results
-        // query.count defaults to 20 in SearchQuery::new()
+        // Early exit threshold (only used in Quantity mode)
         let early_exit_threshold = query.count * 3;
+        let use_early_exit = query.mode.is_quantity();
 
         // Create a FuturesUnordered for concurrent execution with early returns
         let mut futures: FuturesUnordered<_> = providers
@@ -338,11 +343,12 @@ impl ProviderRegistry {
                         provider.search(&query)
                     ).await;
                     
+                    let timeout_msg = format!("Provider timed out (>{}s)", provider_timeout.as_secs());
                     match result {
                         Ok(search_result) => (name, search_result),
                         Err(_) => (name.clone(), Err(crate::error::DxError::ProviderApi {
                             provider: name,
-                            message: "Provider timed out (>5s)".to_string(),
+                            message: timeout_msg,
                             status_code: 408,
                         })),
                     }
@@ -350,7 +356,7 @@ impl ProviderRegistry {
             })
             .collect();
 
-        // Collect results as they complete (not waiting for all)
+        // Collect results as they complete (not waiting for all in Quantity mode)
         let mut all_assets = Vec::new();
         let mut providers_searched = Vec::new();
         let mut provider_errors = Vec::new();
@@ -370,8 +376,8 @@ impl ProviderRegistry {
                 }
             }
             
-            // EARLY EXIT: If we have enough results, stop waiting for slow providers
-            if all_assets.len() >= early_exit_threshold && !futures.is_empty() {
+            // EARLY EXIT: Only in Quantity mode - if we have enough results, stop
+            if use_early_exit && all_assets.len() >= early_exit_threshold && !futures.is_empty() {
                 skipped_slow_providers = futures.len();
                 // Cancel remaining futures by dropping them
                 drop(futures);

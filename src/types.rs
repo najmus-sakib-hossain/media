@@ -7,6 +7,43 @@ use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// SEARCH MODE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Search mode for controlling how providers are queried.
+///
+/// - **Quantity**: Fast mode with early-exit optimization. Returns results as soon as
+///   enough are gathered (3x requested count). Ideal for quick searches.
+/// - **Quality**: Waits for ALL providers to respond (or timeout). Gathers the most
+///   comprehensive results from all sources. Better for thorough searches.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display, EnumString)]
+#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+pub enum SearchMode {
+    /// Fast mode: Early exit after gathering enough results (3x count).
+    /// Skips slow providers for speed. DEFAULT mode.
+    #[default]
+    Quantity,
+    /// Thorough mode: Wait for ALL providers to respond (or timeout).
+    /// Gets comprehensive results from every source.
+    Quality,
+}
+
+impl SearchMode {
+    /// Returns true if this is quantity (fast) mode.
+    #[must_use]
+    pub fn is_quantity(&self) -> bool {
+        matches!(self, Self::Quantity)
+    }
+
+    /// Returns true if this is quality (thorough) mode.
+    #[must_use]
+    pub fn is_quality(&self) -> bool {
+        matches!(self, Self::Quality)
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // MEDIA TYPE
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -416,6 +453,9 @@ pub struct SearchQuery {
     pub orientation: Option<Orientation>,
     /// Color filter (hex or name).
     pub color: Option<String>,
+    /// Search mode (Quantity=fast early-exit, Quality=wait for all).
+    #[serde(default)]
+    pub mode: SearchMode,
 }
 
 impl SearchQuery {
@@ -432,6 +472,7 @@ impl SearchQuery {
             min_height: None,
             orientation: None,
             color: None,
+            mode: SearchMode::default(),
         }
     }
 
@@ -448,6 +489,7 @@ impl SearchQuery {
             min_height: None,
             orientation: None,
             color: None,
+            mode: SearchMode::default(),
         }
     }
 
@@ -469,6 +511,13 @@ impl SearchQuery {
     #[must_use]
     pub fn page(mut self, page: usize) -> Self {
         self.page = page;
+        self
+    }
+
+    /// Set the search mode.
+    #[must_use]
+    pub fn mode(mut self, mode: SearchMode) -> Self {
+        self.mode = mode;
         self
     }
 
