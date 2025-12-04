@@ -1,109 +1,111 @@
 {
-  "showcase": "DX-Media Unified Search Showcase",
+  "showcase": "DX-Media Search Performance Showcase",
   "generated": "2024-12-05",
-  "description": "Interactive demonstration of concurrent search across ALL providers and scrapers",
+  "description": "Concurrent search across 11 FREE providers + 2 scrapers (no API keys required)",
   
-  "search_capabilities": {
-    "providers": [
-      "cleveland", "dpla", "europeana", "freesound", "giphy", 
-      "loc", "met", "nasa", "openverse", "pexels", "picsum", 
-      "pixabay", "polyhaven", "rijksmuseum", "smithsonian", 
-      "unsplash", "wikimedia"
-    ],
-    "scrapers": ["flickr", "nasa-gallery"],
-    "total_sources": 12,
-    "concurrent": true,
-    "technology": "Rust async/tokio with futures::future::join_all"
+  "system_stats": {
+    "total_providers": 19,
+    "free_providers": 11,
+    "premium_providers": 8,
+    "scrapers": 2,
+    "total_sources_searched": 13,
+    "total_free_assets": "966M+"
   },
 
-  "result_files": {
-    "01_single_provider_nasa.json": {
-      "description": "Single provider search (NASA)",
-      "query": "mars rover",
-      "count_requested": 10,
+  "free_providers": [
+    {"name": "openverse", "assets": "700M+", "types": ["image", "audio"], "license": "CC/CC0"},
+    {"name": "wikimedia", "assets": "92M+", "types": ["image", "video", "audio"], "license": "Various"},
+    {"name": "europeana", "assets": "50M+", "types": ["image", "video", "audio", "document"], "license": "Various"},
+    {"name": "loc", "assets": "3M+", "types": ["image", "document", "audio", "video"], "license": "PD"},
+    {"name": "rijksmuseum", "assets": "700K+", "types": ["image"], "license": "CC0"},
+    {"name": "met", "assets": "500K+", "types": ["image"], "license": "CC0"},
+    {"name": "nasa", "assets": "140K+", "types": ["image", "video", "audio"], "license": "PD"},
+    {"name": "cleveland", "assets": "61K+", "types": ["image"], "license": "CC0"},
+    {"name": "artic", "assets": "50K+", "types": ["image"], "license": "CC0"},
+    {"name": "polyhaven", "assets": "3.7K+", "types": ["model3d", "image"], "license": "CC0"},
+    {"name": "picsum", "assets": "Unlimited", "types": ["image"], "license": "Unsplash"}
+  ],
+
+  "scrapers": [
+    {"name": "flickr", "description": "Flickr Commons and free photos"},
+    {"name": "nasa-gallery", "description": "NASA official gallery pages"}
+  ],
+
+  "benchmark_results": [
+    {
+      "file": "01_unified_sunset.json",
+      "query": "sunset",
+      "mode": "UNIFIED (--all)",
+      "sources_searched": 13,
+      "assets_returned": 54,
+      "duration_ms": 7625,
+      "notes": "All 11 providers + 2 scrapers searched concurrently"
+    },
+    {
+      "file": "02_unified_art.json",
+      "query": "monet painting",
+      "mode": "UNIFIED (--all)",
+      "sources_searched": 13,
+      "assets_returned": 44,
+      "duration_ms": 35210,
+      "notes": "Art-focused query, rich results from museum providers"
+    },
+    {
+      "file": "03_unified_audio.json",
+      "query": "jazz music",
+      "mode": "UNIFIED + TYPE FILTER",
+      "sources_searched": 13,
+      "assets_returned": 35,
+      "duration_ms": 32546,
+      "notes": "Audio-only filter, results from Openverse audio sources"
+    },
+    {
+      "file": "04_single_nasa.json",
+      "query": "nasa satellite",
+      "mode": "SINGLE PROVIDER",
+      "sources_searched": 1,
       "assets_returned": 10,
-      "providers": ["nasa"]
+      "duration_ms": 937,
+      "notes": "Single provider search is fastest (<1 second)"
     },
-    "02_multi_provider_museums.json": {
-      "description": "Multi-provider search (Museums)",
-      "query": "landscape painting",
-      "count_requested": 5,
-      "assets_returned": 15,
-      "providers": ["met", "rijksmuseum", "cleveland"]
-    },
-    "03_all_free_providers.json": {
-      "description": "All free providers search",
-      "query": "sunset mountains",
-      "count_requested": 5,
-      "assets_returned": 31,
-      "providers": "ALL FREE (no API key required)"
-    },
-    "04_unified_all_sources.json": {
-      "description": "UNIFIED search (ALL providers + scrapers)",
-      "query": "ocean waves",
-      "count_requested": 5,
-      "assets_returned": 37,
-      "providers": "ALL (10 providers + 2 scrapers)",
-      "sources_returned": ["europeana", "met", "loc", "cleveland", "wikimedia", "nasa", "openverse", "polyhaven", "rijksmuseum", "scraper:flickr", "scraper:nasa-gallery"]
-    },
-    "05_audio_search.json": {
-      "description": "Audio-only media type search",
-      "query": "ambient music",
-      "count_requested": 5,
-      "assets_returned": 8,
-      "media_type": "audio"
-    },
-    "06_europeana_heritage.json": {
-      "description": "High-volume cultural heritage search",
-      "query": "medieval art",
-      "count_requested": 20,
-      "assets_returned": 20,
-      "providers": ["europeana"]
-    },
-    "07_polyhaven_3d.json": {
-      "description": "3D textures and HDRI search",
-      "query": "wood texture",
-      "count_requested": 10,
-      "assets_returned": 10,
-      "providers": ["polyhaven"]
+    {
+      "file": "05_museums.json",
+      "query": "landscape",
+      "mode": "MULTI PROVIDER",
+      "sources_searched": 4,
+      "assets_returned": 19,
+      "duration_ms": 5091,
+      "notes": "4 museum providers: Met, Rijksmuseum, Cleveland, Art Institute"
     }
+  ],
+
+  "performance_summary": {
+    "single_provider": "~0.9 seconds (10 results)",
+    "multi_provider_4x": "~5.1 seconds (19 results)",
+    "unified_all_13x": "~7-35 seconds (35-54 results)",
+    "concurrency": "All sources queried in parallel using Rust async/tokio + futures::join_all"
   },
 
   "cli_commands": {
-    "basic_search": "dx search \"ocean\" -n 5 --format json",
-    "unified_search": "dx search \"sunset\" --all -n 3 --format json",
-    "provider_filter": "dx search \"forest\" --providers wikimedia,nasa,met -n 5 --format json",
-    "audio_search": "dx search \"ambient\" -t audio --format json",
+    "unified_search": "dx search \"sunset\" --all -n 5 --format json",
+    "single_provider": "dx search \"nasa satellite\" -P nasa -n 10 --format json",
+    "multi_provider": "dx search \"landscape\" -P met,rijksmuseum,cleveland,artic -n 5 --format json",
+    "type_filter": "dx search \"jazz\" -t audio --all --format json",
     "list_providers": "dx providers"
-  },
-
-  "performance": {
-    "single_provider": "~0.9 seconds for 10 results",
-    "multi_provider": "~6.3 seconds for 15 results (3 providers)",
-    "all_free": "~12.6 seconds for 31 results (10 providers)",
-    "unified_search": "~17 seconds for 37 results (12 sources)",
-    "concurrency": "All sources queried in parallel using tokio::join!"
   },
 
   "asset_schema": {
     "id": "Unique asset identifier",
-    "provider": "Source provider name",
+    "provider": "Source provider name (11 free providers available)",
     "title": "Asset title/name",
     "author": "Creator/author name",
-    "author_url": "Link to author profile",
     "download_url": "Direct download URL",
     "preview_url": "Preview/thumbnail URL",
     "source_url": "Original source page",
-    "media_type": "image | audio | video | document",
+    "media_type": "image | audio | video | document | model3d",
     "width": "Width in pixels (images)",
     "height": "Height in pixels (images)",
-    "license": "License type (CC0, CC-BY, etc.)",
+    "license": "License type (CC0, CC-BY, PD, etc.)",
     "tags": "Array of tags/keywords"
-  },
-
-  "total_showcase_stats": {
-    "result_files": 7,
-    "total_assets": 131,
-    "unique_providers_tested": 12
   }
 }
