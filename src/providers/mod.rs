@@ -2,7 +2,7 @@
 //!
 //! This module defines the [`Provider`] trait and implementations for various
 //! media asset providers. DX Media supports:
-//! - **10 FREE providers** (no API keys required) with 890M+ assets
+//! - **12 FREE providers** (no API keys required) with 966M+ assets
 //! - **7 PREMIUM providers** (optional API keys) with 113M+ additional assets
 //!
 //! Premium providers gracefully degrade - they simply don't appear in searches
@@ -11,6 +11,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // FREE PROVIDERS (No API Key Required)
 // ═══════════════════════════════════════════════════════════════════════════════
+mod archive; // 26M+ media items (images, video, audio, docs)
+mod artic; // 50K+ CC0 artworks
 mod cleveland;
 mod dpla;
 mod europeana;
@@ -41,6 +43,8 @@ pub mod traits;
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUBLIC EXPORTS - FREE PROVIDERS
 // ═══════════════════════════════════════════════════════════════════════════════
+pub use archive::InternetArchiveProvider;
+pub use artic::ArtInstituteChicagoProvider;
 pub use cleveland::ClevelandMuseumProvider;
 pub use dpla::DplaProvider;
 pub use europeana::EuropeanaProvider;

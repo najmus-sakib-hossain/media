@@ -10,11 +10,13 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::providers::traits::Provider;
 use crate::providers::{
+    ArtInstituteChicagoProvider,
     ClevelandMuseumProvider,
     DplaProvider,
     EuropeanaProvider,
     FreesoundProvider,
     GiphyProvider,
+    InternetArchiveProvider,
     // FREE providers (no API key required)
     LibraryOfCongressProvider,
     LoremPicsumProvider,
@@ -34,16 +36,18 @@ use crate::types::{MediaType, SearchQuery, SearchResult};
 
 /// Registry for managing and querying media providers.
 ///
-/// ## FREE Providers (10) - No API Keys Required - 890M+ Assets
+/// ## FREE Providers (12) - No API Keys Required - 966M+ Assets
 /// - Openverse: 700M+ images and audio (CC/CC0)
 /// - Wikimedia Commons: 92M+ files
 /// - Europeana: 50M+ European cultural heritage items
 /// - DPLA: 40M+ American cultural heritage items (requires API key)
+/// - Internet Archive: 26M+ media items (images, video, audio, docs)
 /// - Library of Congress: 3M+ public domain images
 /// - Rijksmuseum: 700K+ Dutch masterpieces (CC0)
 /// - Met Museum: 500K+ artworks (CC0)
 /// - NASA: 140K+ space images
 /// - Cleveland Museum: 61K+ artworks (CC0)
+/// - Art Institute Chicago: 50K+ artworks (CC0)
 /// - Poly Haven: 3.7K+ 3D models, textures, HDRIs (CC0)
 /// - Lorem Picsum: Unlimited placeholder images
 ///
@@ -97,6 +101,10 @@ impl ProviderRegistry {
         let loc = LibraryOfCongressProvider::new(config);
         providers.insert(loc.name().to_string(), Arc::new(loc));
 
+        // Internet Archive - 26M+ media items (images, video, audio, docs)
+        let archive = InternetArchiveProvider::new(config);
+        providers.insert(archive.name().to_string(), Arc::new(archive));
+
         // ═══════════════════════════════════════════════════════════════════
         // TIER 2: Museum Providers - NO API KEY REQUIRED
         // ═══════════════════════════════════════════════════════════════════
@@ -116,6 +124,10 @@ impl ProviderRegistry {
         // Cleveland Museum - 61K+ artworks (CC0)
         let cleveland = ClevelandMuseumProvider::new(config);
         providers.insert(cleveland.name().to_string(), Arc::new(cleveland));
+
+        // Art Institute of Chicago - 50K+ artworks (CC0)
+        let artic = ArtInstituteChicagoProvider::new(config);
+        providers.insert(artic.name().to_string(), Arc::new(artic));
 
         // ═══════════════════════════════════════════════════════════════════
         // TIER 3: 3D & Utility Providers - NO API KEY REQUIRED
@@ -350,6 +362,8 @@ mod tests {
         assert!(registry.has_provider("met"));
         assert!(registry.has_provider("nasa"));
         assert!(registry.has_provider("cleveland"));
+        assert!(registry.has_provider("artic"));
+        assert!(registry.has_provider("archive"));
 
         // Tier 3: 3D & Utility providers
         assert!(registry.has_provider("polyhaven"));
@@ -364,8 +378,6 @@ mod tests {
         assert!(registry.has_provider("smithsonian"));
 
         // Removed providers
-        assert!(!registry.has_provider("archive"));
-        assert!(!registry.has_provider("artic"));
         assert!(!registry.has_provider("nonexistent"));
     }
 
@@ -375,13 +387,13 @@ mod tests {
         let registry = ProviderRegistry::new(&config);
 
         let stats = registry.stats();
-        // Total: 10 FREE + 7 PREMIUM (including DPLA) = 17 providers
-        assert_eq!(stats.total, 17);
-        // Without API keys, only 10 FREE providers are available
-        // DPLA now requires an API key, so only 10 are available
-        assert_eq!(stats.available, 10);
-        // 7 premium providers are unavailable without API keys
-        assert_eq!(stats.unavailable, 7);
+        // Total: 12 FREE + 7 PREMIUM (including DPLA) = 19 providers
+        assert_eq!(stats.total, 19);
+        // Without API keys, only 11 FREE providers are available
+        // DPLA requires API key, archive is disabled (slow API)
+        assert_eq!(stats.available, 11);
+        // 8 providers are unavailable without API keys (7 premium + archive)
+        assert_eq!(stats.unavailable, 8);
     }
 
     #[test]

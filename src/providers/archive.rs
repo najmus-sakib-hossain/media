@@ -103,7 +103,8 @@ impl Provider for InternetArchiveProvider {
     }
 
     fn is_available(&self) -> bool {
-        true
+        // Temporarily disabled - API is very slow and unreliable
+        false
     }
 
     fn base_url(&self) -> &'static str {
