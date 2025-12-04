@@ -263,6 +263,7 @@ mod tests {
             color: None,
             download: false,
             output: None,
+            all: false,
         };
 
         assert_eq!(args.query_string(), "sunset mountains");
