@@ -112,9 +112,27 @@ impl Downloader {
 
     /// Generate a filename for an asset.
     fn generate_filename(&self, asset: &MediaAsset) -> String {
-        // Use provider, id, and extension
+        // Sanitize the ID to be a valid filename
+        let sanitized_id = self.sanitize_filename(&asset.id);
         let extension = self.guess_extension(asset);
-        format!("{}-{}.{}", asset.provider, asset.id, extension)
+        format!("{}-{}.{}", asset.provider, sanitized_id, extension)
+    }
+
+    /// Sanitize a string to be a valid filename.
+    fn sanitize_filename(&self, input: &str) -> String {
+        // Replace invalid characters with underscores
+        input
+            .chars()
+            .map(|c| match c {
+                '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+                c if c.is_ascii_control() => '_',
+                c => c,
+            })
+            .collect::<String>()
+            // Limit length to avoid filesystem issues
+            .chars()
+            .take(100)
+            .collect()
     }
 
     /// Guess the file extension from the asset.
