@@ -93,17 +93,23 @@ impl UtilityTools {
     
     /// Generate UUID.
     pub fn generate_uuid(&self) -> Result<super::ToolOutput> {
-        uuid::generate_v4()
+        let uuid_str = uuid::generate_v4();
+        Ok(super::ToolOutput::success(uuid_str))
     }
     
     /// Get current timestamp.
     pub fn timestamp(&self) -> Result<super::ToolOutput> {
-        timestamp::now()
+        timestamp::now(timestamp::TimestampFormat::default())
     }
     
     /// Generate random string.
     pub fn random_string(&self, length: usize) -> Result<super::ToolOutput> {
-        random::generate_string(length)
+        random::string(length, random::CharSet::default())
+    }
+    
+    /// CSV to JSON conversion.
+    pub fn csv_to_json<P: AsRef<Path>>(&self, input: P, output: P) -> Result<super::ToolOutput> {
+        csv_convert::csv_to_json(input, output)
     }
 }
 

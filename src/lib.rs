@@ -78,6 +78,7 @@ pub mod error;
 pub mod http;
 pub mod providers;
 pub mod scraping;
+pub mod tools;
 pub mod types;
 
 // CLI module (not public - used by binary)
@@ -118,6 +119,12 @@ pub use providers::{
     FreesoundProvider,   // 600K+ sound effects
     GiphyProvider,       // Millions of GIFs
     SmithsonianProvider, // 4.5M+ CC0 images
+};
+
+// Re-export tools module for media processing
+pub use tools::{
+    ToolOutput,
+    ImageTools, VideoTools, AudioTools, DocumentTools, ArchiveTools, UtilityTools,
 };
 
 /// Library version
