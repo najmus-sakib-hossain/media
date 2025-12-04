@@ -10,26 +10,34 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::providers::traits::Provider;
 use crate::providers::{
+    // FREE providers (no API key required)
     ArtInstituteChicagoProvider,
+    CatApiProvider,
     ClevelandMuseumProvider,
+    DiceBearProvider,
+    DogCeoProvider,
     DplaProvider,
     EuropeanaProvider,
     FreesoundProvider,
     GiphyProvider,
     InternetArchiveProvider,
-    // FREE providers (no API key required)
     LibraryOfCongressProvider,
     LoremPicsumProvider,
     MetMuseumProvider,
     NasaImagesProvider,
+    OpenLibraryProvider,
     OpenverseProvider,
     PexelsProvider,
     PixabayProvider,
     PolyHavenProvider,
+    RandomFoxProvider,
     RijksmuseumProvider,
+    RoboHashProvider,
     SmithsonianProvider,
     // PREMIUM providers (optional API key - graceful degradation)
     UnsplashProvider,
+    VandAMuseumProvider,
+    WaltersArtMuseumProvider,
     WikimediaCommonsProvider,
 };
 use crate::types::{MediaType, SearchQuery, SearchResult};
@@ -140,6 +148,46 @@ impl ProviderRegistry {
         // Lorem Picsum - Unlimited placeholder images (no API key required)
         let picsum = LoremPicsumProvider::new(config);
         providers.insert(picsum.name().to_string(), Arc::new(picsum));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 3.5: Animal & Avatar Providers - NO API KEY REQUIRED
+        // ═══════════════════════════════════════════════════════════════════
+
+        // Dog CEO - 20K+ dog images
+        let dogceo = DogCeoProvider::new(config);
+        providers.insert(dogceo.name().to_string(), Arc::new(dogceo));
+
+        // Cat API - 60K+ cat images
+        let catapi = CatApiProvider::new(config);
+        providers.insert(catapi.name().to_string(), Arc::new(catapi));
+
+        // Random Fox - Unlimited fox images
+        let randomfox = RandomFoxProvider::new(config);
+        providers.insert(randomfox.name().to_string(), Arc::new(randomfox));
+
+        // DiceBear - Unlimited avatar generation (25+ styles)
+        let dicebear = DiceBearProvider::new(config);
+        providers.insert(dicebear.name().to_string(), Arc::new(dicebear));
+
+        // RoboHash - Unlimited robot/monster avatars
+        let robohash = RoboHashProvider::new(config);
+        providers.insert(robohash.name().to_string(), Arc::new(robohash));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 3.6: Additional Museums - NO API KEY REQUIRED
+        // ═══════════════════════════════════════════════════════════════════
+
+        // V&A Museum - 1.2M+ art and design objects
+        let vanda = VandAMuseumProvider::new(config);
+        providers.insert(vanda.name().to_string(), Arc::new(vanda));
+
+        // Walters Art Museum - 25K+ artworks (CC0)
+        let walters = WaltersArtMuseumProvider::new(config);
+        providers.insert(walters.name().to_string(), Arc::new(walters));
+
+        // Open Library - 30M+ book covers
+        let openlibrary = OpenLibraryProvider::new(config);
+        providers.insert(openlibrary.name().to_string(), Arc::new(openlibrary));
 
         // ═══════════════════════════════════════════════════════════════════
         // TIER 4: PREMIUM Providers - OPTIONAL API KEY (Graceful Degradation)

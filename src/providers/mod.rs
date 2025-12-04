@@ -2,7 +2,7 @@
 //!
 //! This module defines the [`Provider`] trait and implementations for various
 //! media asset providers. DX Media supports:
-//! - **12 FREE providers** (no API keys required) with 966M+ assets
+//! - **20+ FREE providers** (no API keys required) with 1B+ assets
 //! - **7 PREMIUM providers** (optional API keys) with 113M+ additional assets
 //!
 //! Premium providers gracefully degrade - they simply don't appear in searches
@@ -13,16 +13,24 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 mod archive; // 26M+ media items (images, video, audio, docs)
 mod artic; // 50K+ CC0 artworks
+mod catapi; // 60K+ cat images
 mod cleveland;
+mod dicebear; // Unlimited avatar generation
+mod dogceo; // 20K+ dog images
 mod dpla;
 mod europeana;
 mod loc;
 mod met;
 mod nasa;
+mod openlibrary; // 30M+ book covers
 mod openverse;
 mod picsum;
 mod polyhaven;
+mod randomfox; // Unlimited fox images
 mod rijksmuseum;
+mod robohash; // Unlimited robot avatars
+mod vanda; // 1.2M+ V&A Museum items
+mod walters; // 25K+ Walters artworks
 mod wikimedia;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -45,16 +53,24 @@ pub mod traits;
 // ═══════════════════════════════════════════════════════════════════════════════
 pub use archive::InternetArchiveProvider;
 pub use artic::ArtInstituteChicagoProvider;
+pub use catapi::CatApiProvider;
 pub use cleveland::ClevelandMuseumProvider;
+pub use dicebear::DiceBearProvider;
+pub use dogceo::DogCeoProvider;
 pub use dpla::DplaProvider;
 pub use europeana::EuropeanaProvider;
 pub use loc::LibraryOfCongressProvider;
 pub use met::MetMuseumProvider;
 pub use nasa::NasaImagesProvider;
+pub use openlibrary::OpenLibraryProvider;
 pub use openverse::OpenverseProvider;
 pub use picsum::LoremPicsumProvider;
 pub use polyhaven::PolyHavenProvider;
+pub use randomfox::RandomFoxProvider;
 pub use rijksmuseum::RijksmuseumProvider;
+pub use robohash::RoboHashProvider;
+pub use vanda::VandAMuseumProvider;
+pub use walters::WaltersArtMuseumProvider;
 pub use wikimedia::WikimediaCommonsProvider;
 
 // ═══════════════════════════════════════════════════════════════════════════════
