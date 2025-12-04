@@ -53,6 +53,10 @@ pub enum Command {
     /// Show configuration information.
     Config,
 
+    /// Check external dependencies (ffmpeg, etc).
+    #[command(alias = "deps")]
+    CheckDeps,
+
     /// Interactive mode (TUI).
     #[command(alias = "i")]
     Interactive,

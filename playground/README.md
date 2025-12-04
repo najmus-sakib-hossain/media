@@ -11,15 +11,28 @@ playground/
 │   ├── audio/       # Test audio files (piano.mp3, calm_piano.mp3)
 │   ├── videos/      # Test video files (sample.mp4)
 │   ├── documents/   # Test documents (test.md, test.html, test.txt)
-│   └── archives/    # Test archives (if any)
-└── output/          # Output files from tool tests
-    ├── image/       # Image processing outputs
-    ├── video/       # Video processing outputs
-    ├── audio/       # Audio processing outputs
-    ├── document/    # Document processing outputs
-    ├── archive/     # Archive operation outputs
-    ├── utility/     # Utility tool outputs
-    └── collections/ # Tool collection test outputs
+│   ├── providers/   # Assets organized by provider
+│   │   ├── openverse/
+│   │   ├── wikimedia/
+│   │   ├── nasa/
+│   │   ├── met/
+│   │   └── ... (13 provider folders)
+│   └── scraping/    # Scraping test outputs
+├── output/          # Output files from tool tests
+│   ├── image/       # Image processing outputs
+│   ├── video/       # Video processing outputs
+│   ├── audio/       # Audio processing outputs
+│   ├── document/    # Document processing outputs
+│   ├── archive/     # Archive operation outputs
+│   ├── utility/     # Utility tool outputs
+│   └── collections/ # Tool collection test outputs
+└── tools/           # Tool test outputs by category
+    ├── image/
+    ├── video/
+    ├── audio/
+    ├── document/
+    ├── archive/
+    └── utility/
 ```
 
 ## Test Assets
@@ -43,18 +56,27 @@ playground/
 - `test.html` - HTML test document
 - `test.txt` - Plain text test document
 
+### Provider Downloads
+- `providers/openverse/openverse-*.jpg` - Downloaded from Openverse
+- `providers/wikimedia/wikimedia-*.jpg` - Downloaded from Wikimedia
+
 ## Running Tests
 
 All 60 tools are tested using real assets. Run the integration tests with:
 
 ```bash
-cargo test --test test_all_tools
-```
+# Run all tests (593 tests)
+cargo test
 
-This will:
-1. Test all 60 tools across 6 categories
-2. Create output files in `playground/output/`
-3. Verify tool APIs work correctly
+# Run tool integration tests
+cargo test --test test_all_tools
+
+# Run playground integration tests (downloads from providers)
+cargo test --test playground_integration
+
+# Run with output
+cargo test --test playground_integration -- --nocapture
+```
 
 ## CLI Usage Examples
 
@@ -75,7 +97,7 @@ List available providers:
 
 ## Test Results
 
-All 576 tests pass:
+All 593 tests pass:
 - 158 library unit tests
 - 35 archive tests
 - 49 audio tests

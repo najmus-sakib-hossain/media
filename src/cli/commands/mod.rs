@@ -16,6 +16,7 @@ pub async fn execute(args: Args) -> Result<()> {
         Command::Scrape(scrape_args) => scrape::execute(scrape_args, args.format, args.quiet).await,
         Command::Providers(provider_args) => providers::execute(provider_args, args.format).await,
         Command::Config => config_command(args.format).await,
+        Command::CheckDeps => check_deps_command().await,
         Command::Interactive => interactive_command().await,
     }
 }
@@ -71,6 +72,113 @@ async fn interactive_command() -> Result<()> {
 
     println!("{}", "Interactive mode coming soon!".yellow());
     println!("For now, use the search and download commands.");
+
+    Ok(())
+}
+
+/// Execute the check-deps command.
+async fn check_deps_command() -> Result<()> {
+    use colored::Colorize;
+    use std::process::Command;
+
+    println!("{}", "DX Media External Dependencies".bold().cyan());
+    println!();
+    println!("{}", "Checking for required external tools...".dimmed());
+    println!();
+
+    // List of dependencies to check
+    let deps = [
+        ("ffmpeg", "-version", "Video/Audio processing (19 tools)", true),
+        ("ffprobe", "-version", "Media information", true),
+        ("tesseract", "--version", "OCR - text from images", false),
+        ("wkhtmltopdf", "--version", "HTML to PDF conversion", false),
+        ("pandoc", "--version", "Universal document conversion", false),
+        ("7z", "", "7-zip archive support", false),
+        ("exiftool", "-ver", "EXIF metadata handling", false),
+    ];
+
+    let mut installed = 0;
+    let mut required_missing = 0;
+
+    for (name, version_arg, description, required) in deps {
+        let result = if version_arg.is_empty() {
+            Command::new(name).output()
+        } else {
+            Command::new(name).arg(version_arg).output()
+        };
+
+        match result {
+            Ok(output) if output.status.success() => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let version = stdout.lines().next().unwrap_or("").trim();
+                let version_short = if version.len() > 40 {
+                    &version[..40]
+                } else {
+                    version
+                };
+                println!(
+                    "  {} {} - {} {}",
+                    "✓".green(),
+                    name.bold(),
+                    description,
+                    format!("({})", version_short).dimmed()
+                );
+                installed += 1;
+            }
+            _ => {
+                if required {
+                    println!(
+                        "  {} {} - {} {}",
+                        "✗".red(),
+                        name.bold(),
+                        description,
+                        "(required)".red()
+                    );
+                    required_missing += 1;
+                } else {
+                    println!(
+                        "  {} {} - {} {}",
+                        "○".yellow(),
+                        name,
+                        description,
+                        "(optional)".dimmed()
+                    );
+                }
+            }
+        }
+    }
+
+    println!();
+    println!("{}", "Summary:".bold());
+    println!("  {} {} tools installed", "→".cyan(), installed);
+    
+    if required_missing > 0 {
+        println!(
+            "  {} {} required tools missing",
+            "!".red().bold(),
+            required_missing
+        );
+        println!();
+        println!("{}", "Install FFmpeg:".bold().yellow());
+        println!("  Windows: winget install FFmpeg");
+        println!("  macOS:   brew install ffmpeg");
+        println!("  Linux:   apt install ffmpeg");
+    } else {
+        println!("  {} All required dependencies available!", "✓".green());
+    }
+
+    println!();
+    println!("{}", "Tool Availability:".bold());
+    println!("  {} 33 tools work natively (no dependencies)", "→".cyan());
+    println!(
+        "  {} 19 tools require FFmpeg (video/audio)",
+        if required_missing == 0 {
+            "→".cyan()
+        } else {
+            "!".red()
+        }
+    );
+    println!("  {} 8 tools enhanced by optional deps", "→".cyan());
 
     Ok(())
 }
