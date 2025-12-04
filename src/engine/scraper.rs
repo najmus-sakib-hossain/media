@@ -185,15 +185,16 @@ impl Scraper {
     ) {
         // Common image CDN patterns for stock photo sites
         let cdn_patterns = [
-            // Unsplash
-            r#"https?://images\.unsplash\.com/photo-[a-zA-Z0-9_-]+\?[^"'\s]*w=\d+"#,
+            // Unsplash - capture photo URLs with at least width 400
+            r#"https://images\.unsplash\.com/photo-[a-zA-Z0-9_-]+\?[^"'\s<>]*w=[4-9]\d{2,}[^"'\s<>]*"#,
             // Pexels
-            r#"https?://images\.pexels\.com/photos/\d+/[^"'\s]+\.(?:jpe?g|png|webp)"#,
-            // Pixabay
-            r#"https?://cdn\.pixabay\.com/photo/\d+/\d+/\d+/\d+/\d+/[^"'\s]+\.(?:jpe?g|png|webp)"#,
-            r#"https?://pixabay\.com/get/[^"'\s]+\.(?:jpe?g|png|webp)"#,
-            // General image URLs with common extensions
-            r#"https?://[^"'\s<>]+\.(?:jpe?g|png|webp|gif)(?:\?[^"'\s<>]*)?"#,
+            r#"https://images\.pexels\.com/photos/\d+/[^"'\s<>]+\.(?:jpe?g|png|webp)"#,
+            // Pixabay CDN - format is cdn.pixabay.com/photo/YYYY/MM/DD/HH/MM/name_size.jpg
+            r#"https://cdn\.pixabay\.com/photo/\d+/\d+/\d+/\d+/\d+/[a-zA-Z0-9_-]+_(?:1280|1920|640)\.(?:jpe?g|png|webp)"#,
+            // iStockPhoto (appears on Pixabay)
+            r#"https://media\.istockphoto\.com/[^"'\s<>]+\.(?:jpe?g|png|webp)"#,
+            // Flickr
+            r#"https://live\.staticflickr\.com/\d+/[^"'\s<>]+\.(?:jpe?g|png)"#,
         ];
 
         let mut seen_urls: std::collections::HashSet<String> = result
@@ -452,6 +453,11 @@ impl Scraper {
             return None;
         }
 
+        // Skip small images (profiles, avatars, icons)
+        if self.is_small_image_url(&url_str) {
+            return None;
+        }
+
         // Check pattern if specified
         if let Some(ref pattern) = options.pattern {
             if !self.matches_pattern(&url_str, pattern) {
@@ -465,17 +471,24 @@ impl Scraper {
             return None;
         }
 
+        // Get dimensions if available and skip if too small
+        let width = element.value().attr("width").and_then(|w| w.parse().ok());
+        let height = element.value().attr("height").and_then(|h| h.parse().ok());
+        
+        // Skip images with explicit small dimensions
+        if let (Some(w), Some(h)) = (width, height) {
+            if w < 100 || h < 100 {
+                return None;
+            }
+        }
+
         // Get alt text for title
         let alt = element.value().attr("alt").unwrap_or("").to_string();
         let title = if alt.is_empty() {
-            format!("Image {}", idx + 1)
+            format!("IMG Image {}", idx + 1)
         } else {
-            alt
+            format!("IMG {}", alt)
         };
-
-        // Get dimensions if available
-        let width = element.value().attr("width").and_then(|w| w.parse().ok());
-        let height = element.value().attr("height").and_then(|h| h.parse().ok());
 
         Some(
             MediaAsset::builder()
@@ -580,11 +593,35 @@ impl Scraper {
         links
     }
 
-    /// Parse srcset attribute to get URLs.
+    /// Parse srcset attribute to get the largest image URL only.
     fn parse_srcset(&self, srcset: &str) -> Vec<String> {
-        srcset
+        // Parse srcset and extract width values
+        let mut entries: Vec<(String, u32)> = srcset
             .split(',')
-            .filter_map(|entry| entry.trim().split_whitespace().next().map(String::from))
+            .filter_map(|entry| {
+                let parts: Vec<&str> = entry.trim().split_whitespace().collect();
+                if parts.is_empty() {
+                    return None;
+                }
+                let url = parts[0].to_string();
+                // Try to extract width from descriptor like "800w"
+                let width = parts.get(1)
+                    .and_then(|desc| {
+                        desc.trim_end_matches('w')
+                            .parse::<u32>()
+                            .ok()
+                    })
+                    .unwrap_or(0);
+                Some((url, width))
+            })
+            .filter(|(_, w)| *w >= 400) // Only include images >= 400px width
+            .collect();
+        
+        // Sort by width descending and return only the largest
+        entries.sort_by(|a, b| b.1.cmp(&a.1));
+        entries.into_iter()
+            .take(1) // Only return the largest image
+            .map(|(url, _)| url)
             .collect()
     }
 
