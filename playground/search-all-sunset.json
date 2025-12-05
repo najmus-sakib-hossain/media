@@ -1,351 +1,570 @@
-   Compiling dx-media v0.1.0 (F:\Code\media)
-warning: unused import: `serde::de::Error`
-   --> src\providers\cleveland.rs:199:9
-    |
-199 |     use serde::de::Error;
-    |         ^^^^^^^^^^^^^^^^
-    |
-    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
-
-warning: unused import: `ResponseExt`
-  --> src\providers\nekosbest.rs:18:31
-   |
-18 | use crate::http::{HttpClient, ResponseExt};
-   |                               ^^^^^^^^^^^
-
-warning: value assigned to `code_lang` is never read
-   --> src\tools\document\markdown.rs:186:13
-    |
-186 |     let mut code_lang = String::new();
-    |             ^^^^^^^^^
-    |
-    = help: maybe it is overwritten before being read?
-    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
-
-warning: unused variable: `json`
-   --> src\tools\utility\json_format.rs:226:21
-    |
-226 | pub fn extract_path(json: &str, path: &str) -> Result<ToolOutput> {
-    |                     ^^^^ help: if this is intentional, prefix it with an underscore: `_json`
-    |
-    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
-
-warning: value assigned to `first_item` is never read
-   --> src\tools\utility\yaml_convert.rs:280:17
-    |
-280 |                 first_item = true;
-    |                 ^^^^^^^^^^
-    |
-    = help: maybe it is overwritten before being read?
-
-warning: field `incomplete_results` is never read
-   --> src\providers\github.rs:219:5
-    |
-217 | struct GitHubSearchResponse {
-    |        -------------------- field in this struct
-218 |     total_count: u64,
-219 |     incomplete_results: bool,
-    |     ^^^^^^^^^^^^^^^^^^
-    |
-    = note: `GitHubSearchResponse` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
-    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
-
-warning: fields `path`, `url`, `git_url`, and `score` are never read
-   --> src\providers\github.rs:226:5
-    |
-224 | struct GitHubCodeItem {
-    |        -------------- fields in this struct
-225 |     name: String,
-226 |     path: String,
-    |     ^^^^
-227 |     sha: String,
-228 |     url: String,
-    |     ^^^
-229 |     html_url: String,
-230 |     git_url: String,
-    |     ^^^^^^^
-...
-233 |     score: f64,
-    |     ^^^^^
-    |
-    = note: `GitHubCodeItem` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
-
-warning: fields `id`, `name`, `html_url`, `description`, and `stargazers_count` are never read
-   --> src\providers\github.rs:238:5
-    |
-237 | struct GitHubRepository {
-    |        ---------------- fields in this struct
-238 |     id: u64,
-    |     ^^
-239 |     name: String,
-    |     ^^^^
-...
-242 |     html_url: String,
-    |     ^^^^^^^^
-243 |     description: Option<String>,
-    |     ^^^^^^^^^^^
-244 |     #[serde(default)]
-245 |     stargazers_count: u32,
-    |     ^^^^^^^^^^^^^^^^
-    |
-    = note: `GitHubRepository` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
-
-warning: fields `id`, `avatar_url`, and `html_url` are never read
-   --> src\providers\github.rs:251:5
-    |
-249 | struct GitHubOwner {
-    |        ----------- fields in this struct
-250 |     login: String,
-251 |     id: u64,
-    |     ^^
-252 |     avatar_url: String,
-    |     ^^^^^^^^^^
-253 |     html_url: String,
-    |     ^^^^^^^^
-    |
-    = note: `GitHubOwner` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
-
-warning: field `first_publish_year` is never read
-   --> src\providers\openlibrary.rs:166:5
-    |
-161 | struct OpenLibraryDoc {
-    |        -------------- field in this struct
-...
-166 |     first_publish_year: Option<i32>,
-    |     ^^^^^^^^^^^^^^^^^^
-    |
-    = note: `OpenLibraryDoc` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
-
-warning: field `description` is never read
-   --> src\providers\walters.rs:166:5
-    |
-163 | struct WaltersItem {
-    |        ----------- field in this struct
-...
-166 |     description: Option<String>,
-    |     ^^^^^^^^^^^
-    |
-    = note: `WaltersItem` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
-
-warning: fields `year`, `month`, and `day` are never read
-  --> src\providers\xkcd.rs:38:5
-   |
-29 | struct XkcdComic {
-   |        --------- fields in this struct
-...
-38 |     year: String,
-   |     ^^^^
-39 |     #[serde(default)]
-40 |     month: String,
-   |     ^^^^^
-41 |     #[serde(default)]
-42 |     day: String,
-   |     ^^^
-   |
-   = note: `XkcdComic` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
-
-warning: missing documentation for a variant
-  --> src\tools\audio\converter.rs:13:5
-   |
-13 |     Mp3,
-   |     ^^^
-   |
-note: the lint level is defined here
-  --> src\lib.rs:46:9
-   |
-46 | #![warn(missing_docs)]
-   |         ^^^^^^^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\audio\converter.rs:14:5
-   |
-14 |     Wav,
-   |     ^^^
-
-warning: missing documentation for a variant
-  --> src\tools\audio\converter.rs:15:5
-   |
-15 |     Flac,
-   |     ^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\audio\converter.rs:16:5
-   |
-16 |     Ogg,
-   |     ^^^
-
-warning: missing documentation for a variant
-  --> src\tools\audio\converter.rs:17:5
-   |
-17 |     Aac,
-   |     ^^^
-
-warning: missing documentation for a variant
-  --> src\tools\audio\converter.rs:18:5
-   |
-18 |     M4a,
-   |     ^^^
-
-warning: missing documentation for a variant
-  --> src\tools\audio\converter.rs:19:5
-   |
-19 |     Wma,
-   |     ^^^
-
-warning: missing documentation for a variant
-  --> src\tools\audio\converter.rs:20:5
-   |
-20 |     Opus,
-   |     ^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\effects.rs:18:12
-   |
-18 |     Echo { delay: f64, decay: f32 },
-   |            ^^^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\effects.rs:18:24
-   |
-18 |     Echo { delay: f64, decay: f32 },
-   |                        ^^^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\effects.rs:20:14
-   |
-20 |     Reverb { room_size: f32, damping: f32 },
-   |              ^^^^^^^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\effects.rs:20:30
-   |
-20 |     Reverb { room_size: f32, damping: f32 },
-   |                              ^^^^^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\effects.rs:26:16
-   |
-26 |     BandPass { low: u32, high: u32 },
-   |                ^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\effects.rs:26:26
-   |
-26 |     BandPass { low: u32, high: u32 },
-   |                          ^^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\effects.rs:34:18
-   |
-34 |     Compressor { threshold: f32, ratio: f32 },
-   |                  ^^^^^^^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\effects.rs:34:34
-   |
-34 |     Compressor { threshold: f32, ratio: f32 },
-   |                                  ^^^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\splitter.rs:17:9
-   |
-17 |         threshold_db: f32,
-   |         ^^^^^^^^^^^^^^^^^
-
-warning: missing documentation for a struct field
-  --> src\tools\audio\splitter.rs:18:9
-   |
-18 |         min_duration: f64,
-   |         ^^^^^^^^^^^^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\html_to_pdf.rs:31:5
-   |
-31 |     Portrait,
-   |     ^^^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\html_to_pdf.rs:32:5
-   |
-32 |     Landscape,
-   |     ^^^^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_to_image.rs:14:5
-   |
-14 |     Png,
-   |     ^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_to_image.rs:15:5
-   |
-15 |     Jpeg,
-   |     ^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_to_image.rs:16:5
-   |
-16 |     Tiff,
-   |     ^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_to_image.rs:17:5
-   |
-17 |     Bmp,
-   |     ^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_watermark.rs:14:5
-   |
-14 |     Center,
-   |     ^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_watermark.rs:15:5
-   |
-15 |     TopLeft,
-   |     ^^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_watermark.rs:16:5
-   |
-16 |     TopRight,
-   |     ^^^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_watermark.rs:17:5
-   |
-17 |     BottomLeft,
-   |     ^^^^^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_watermark.rs:18:5
-   |
-18 |     BottomRight,
-   |     ^^^^^^^^^^^
-
-warning: missing documentation for a variant
-  --> src\tools\document\pdf_watermark.rs:19:5
-   |
-19 |     Diagonal,
-   |     ^^^^^^^^
-
-warning: missing documentation for a constant
-  --> src\tools\image\icons.rs:12:1
-   |
-12 | pub const IOS_SIZES: &[u32] = &[57, 60, 72, 76, 114, 120, 144, 152, 167, 180];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: missing documentation for a constant
-  --> src\tools\image\icons.rs:13:1
-   |
-13 | pub const ANDROID_SIZES: &[u32] = &[36, 48, 72, 96, 144, 192, 512];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: missing documentation for a constant
-  --> src\tools\image\icons.rs:14:1
-   |
-14 | pub const WINDOWS_SIZES: &[u32] = &[70, 150, 310];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: `dx-media` (lib) generated 45 warnings (run `cargo fix --lib -p dx-media` to apply 2 suggestions)
+{
+  "assets": [
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/adventurer/svg?seed=sunset_0",
+      "height": null,
+      "id": "dicebear_adventurer_0",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/adventurer/png?seed=sunset_0&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/adventurer",
+      "tags": [
+        "avatar",
+        "adventurer",
+        "generated",
+        "svg"
+      ],
+      "title": "adventurer avatar - sunset_0",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/adventurer-neutral/svg?seed=sunset_1",
+      "height": null,
+      "id": "dicebear_adventurer-neutral_1",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/adventurer-neutral/png?seed=sunset_1&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/adventurer-neutral",
+      "tags": [
+        "avatar",
+        "adventurer-neutral",
+        "generated",
+        "svg"
+      ],
+      "title": "adventurer-neutral avatar - sunset_1",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/avataaars/svg?seed=sunset_2",
+      "height": null,
+      "id": "dicebear_avataaars_2",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/avataaars/png?seed=sunset_2&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/avataaars",
+      "tags": [
+        "avatar",
+        "avataaars",
+        "generated",
+        "svg"
+      ],
+      "title": "avataaars avatar - sunset_2",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/avataaars-neutral/svg?seed=sunset_3",
+      "height": null,
+      "id": "dicebear_avataaars-neutral_3",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/avataaars-neutral/png?seed=sunset_3&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/avataaars-neutral",
+      "tags": [
+        "avatar",
+        "avataaars-neutral",
+        "generated",
+        "svg"
+      ],
+      "title": "avataaars-neutral avatar - sunset_3",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/big-ears/svg?seed=sunset_4",
+      "height": null,
+      "id": "dicebear_big-ears_4",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/big-ears/png?seed=sunset_4&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/big-ears",
+      "tags": [
+        "avatar",
+        "big-ears",
+        "generated",
+        "svg"
+      ],
+      "title": "big-ears avatar - sunset_4",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/big-ears-neutral/svg?seed=sunset_5",
+      "height": null,
+      "id": "dicebear_big-ears-neutral_5",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/big-ears-neutral/png?seed=sunset_5&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/big-ears-neutral",
+      "tags": [
+        "avatar",
+        "big-ears-neutral",
+        "generated",
+        "svg"
+      ],
+      "title": "big-ears-neutral avatar - sunset_5",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/big-smile/svg?seed=sunset_6",
+      "height": null,
+      "id": "dicebear_big-smile_6",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/big-smile/png?seed=sunset_6&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/big-smile",
+      "tags": [
+        "avatar",
+        "big-smile",
+        "generated",
+        "svg"
+      ],
+      "title": "big-smile avatar - sunset_6",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/bottts/svg?seed=sunset_7",
+      "height": null,
+      "id": "dicebear_bottts_7",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/bottts/png?seed=sunset_7&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/bottts",
+      "tags": [
+        "avatar",
+        "bottts",
+        "generated",
+        "svg"
+      ],
+      "title": "bottts avatar - sunset_7",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=sunset_8",
+      "height": null,
+      "id": "dicebear_bottts-neutral_8",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/bottts-neutral/png?seed=sunset_8&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/bottts-neutral",
+      "tags": [
+        "avatar",
+        "bottts-neutral",
+        "generated",
+        "svg"
+      ],
+      "title": "bottts-neutral avatar - sunset_8",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://api.dicebear.com/9.x/croodles/svg?seed=sunset_9",
+      "height": null,
+      "id": "dicebear_croodles_9",
+      "license": "CC0",
+      "media_type": "image",
+      "preview_url": "https://api.dicebear.com/9.x/croodles/png?seed=sunset_9&size=200",
+      "provider": "dicebear",
+      "source_url": "https://www.dicebear.com/styles/croodles",
+      "tags": [
+        "avatar",
+        "croodles",
+        "generated",
+        "svg"
+      ],
+      "title": "croodles avatar - sunset_9",
+      "width": null
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_0?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_0",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_0?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_0",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_0",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_1?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_1",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_1?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_1",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_1",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_2?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_2",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_2?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_2",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_2",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_3?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_3",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_3?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_3",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_3",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_4?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_4",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_4?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_4",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_4",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_5?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_5",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_5?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_5",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_5",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_6?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_6",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_6?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_6",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_6",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_7?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_7",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_7?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_7",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_7",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_8?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_8",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_8?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_8",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_8",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://robohash.org/sunset_9?set=set1&size=300x300",
+      "height": 300,
+      "id": "robohash_set1_sunset_9",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://robohash.org/sunset_9?set=set1&size=150x150",
+      "provider": "robohash",
+      "source_url": "https://robohash.org/sunset_9",
+      "tags": [
+        "avatar",
+        "robots",
+        "generated",
+        "robohash"
+      ],
+      "title": "RoboHash robots - sunset_9",
+      "width": 300
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_0",
+      "height": 600,
+      "id": "loremflickr_sunset_0",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_0",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_0",
+      "tags": [],
+      "title": "sunset photo #1",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_1",
+      "height": 600,
+      "id": "loremflickr_sunset_1",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_1",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_1",
+      "tags": [],
+      "title": "sunset photo #2",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_2",
+      "height": 600,
+      "id": "loremflickr_sunset_2",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_2",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_2",
+      "tags": [],
+      "title": "sunset photo #3",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_3",
+      "height": 600,
+      "id": "loremflickr_sunset_3",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_3",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_3",
+      "tags": [],
+      "title": "sunset photo #4",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_4",
+      "height": 600,
+      "id": "loremflickr_sunset_4",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_4",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_4",
+      "tags": [],
+      "title": "sunset photo #5",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_5",
+      "height": 600,
+      "id": "loremflickr_sunset_5",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_5",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_5",
+      "tags": [],
+      "title": "sunset photo #6",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_6",
+      "height": 600,
+      "id": "loremflickr_sunset_6",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_6",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_6",
+      "tags": [],
+      "title": "sunset photo #7",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_7",
+      "height": 600,
+      "id": "loremflickr_sunset_7",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_7",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_7",
+      "tags": [],
+      "title": "sunset photo #8",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_8",
+      "height": 600,
+      "id": "loremflickr_sunset_8",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_8",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_8",
+      "tags": [],
+      "title": "sunset photo #9",
+      "width": 800
+    },
+    {
+      "author": null,
+      "author_url": null,
+      "download_url": "https://loremflickr.com/800/600/sunset?lock=sunset_9",
+      "height": 600,
+      "id": "loremflickr_sunset_9",
+      "license": "CC-BY",
+      "media_type": "image",
+      "preview_url": "https://loremflickr.com/400/300/sunset?lock=sunset_9",
+      "provider": "loremflickr",
+      "source_url": "https://loremflickr.com/800/600/sunset?lock=sunset_9",
+      "tags": [],
+      "title": "sunset photo #10",
+      "width": 800
+    }
+  ],
+  "duration_ms": 0,
+  "media_type": null,
+  "provider_errors": [
+    {
+      "error": "Skipped 19 slow providers (had 30 results)",
+      "provider": "early_exit"
+    }
+  ],
+  "providers_searched": [
+    "dicebear",
+    "robohash",
+    "loremflickr"
+  ],
+  "query": "sunset",
+  "returned_count": 30,
+  "total_count": 30
+}
