@@ -15,6 +15,7 @@ mod archive; // 26M+ media items (images, video, audio, docs)
 mod artic; // 50K+ CC0 artworks
 mod catapi; // 60K+ cat images
 mod cleveland;
+mod datagov; // 300K+ US Government datasets (JSON, CSV, XML)
 mod dicebear; // Unlimited avatar generation
 mod dogceo; // 20K+ dog images
 mod dpla;
@@ -61,6 +62,7 @@ pub use archive::InternetArchiveProvider;
 pub use artic::ArtInstituteChicagoProvider;
 pub use catapi::CatApiProvider;
 pub use cleveland::ClevelandMuseumProvider;
+pub use datagov::DataGovProvider;
 pub use dicebear::DiceBearProvider;
 pub use dogceo::DogCeoProvider;
 pub use dpla::DplaProvider;

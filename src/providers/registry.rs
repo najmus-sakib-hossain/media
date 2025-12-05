@@ -14,6 +14,7 @@ use crate::providers::{
     ArtInstituteChicagoProvider,
     CatApiProvider,
     ClevelandMuseumProvider,
+    DataGovProvider,
     DiceBearProvider,
     DogCeoProvider,
     DplaProvider,
@@ -226,6 +227,10 @@ impl ProviderRegistry {
         // ═══════════════════════════════════════════════════════════════════
         // TIER 3.9: Data & Document Providers - NO API KEY REQUIRED
         // ═══════════════════════════════════════════════════════════════════
+
+        // Data.gov - 300K+ US Government datasets (JSON, CSV, XML)
+        let datagov = DataGovProvider::new(config);
+        providers.insert(datagov.name().to_string(), Arc::new(datagov));
 
         // GitHub - Data files (JSON, CSV, PDF, Excel) from public repos
         let github = GitHubProvider::new(config);
@@ -533,11 +538,11 @@ mod tests {
         let registry = ProviderRegistry::new(&config);
 
         let stats = registry.stats();
-        // Total: 25 FREE + 8 PREMIUM = 33 providers
-        assert_eq!(stats.total, 33);
-        // Without API keys: 22 FREE providers available
+        // Total: 26 FREE + 8 PREMIUM = 34 providers
+        assert_eq!(stats.total, 34);
+        // Without API keys: 23 FREE providers available
         // (walters + nekosbest + github disabled/need auth)
-        assert_eq!(stats.available, 22);
+        assert_eq!(stats.available, 23);
         // 11 providers unavailable: 8 need API keys + walters + nekosbest + github disabled
         assert_eq!(stats.unavailable, 11);
     }
