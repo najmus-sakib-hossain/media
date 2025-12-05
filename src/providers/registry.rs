@@ -20,6 +20,7 @@ use crate::providers::{
     EuropeanaProvider,
     FreesoundProvider,
     GiphyProvider,
+    GitHubProvider,
     InternetArchiveProvider,
     LibraryOfCongressProvider,
     LoremFlickrProvider,
@@ -221,6 +222,14 @@ impl ProviderRegistry {
         // LoremFlickr - Unlimited Flickr CC photos by keyword
         let loremflickr = LoremFlickrProvider::new(config);
         providers.insert(loremflickr.name().to_string(), Arc::new(loremflickr));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 3.9: Data & Document Providers - NO API KEY REQUIRED
+        // ═══════════════════════════════════════════════════════════════════
+
+        // GitHub - Data files (JSON, CSV, PDF, Excel) from public repos
+        let github = GitHubProvider::new(config);
+        providers.insert(github.name().to_string(), Arc::new(github));
 
         // ═══════════════════════════════════════════════════════════════════
         // TIER 4: PREMIUM Providers - OPTIONAL API KEY (Graceful Degradation)
@@ -524,13 +533,13 @@ mod tests {
         let registry = ProviderRegistry::new(&config);
 
         let stats = registry.stats();
-        // Total: 24 FREE + 8 PREMIUM = 32 providers
-        assert_eq!(stats.total, 32);
+        // Total: 25 FREE + 8 PREMIUM = 33 providers
+        assert_eq!(stats.total, 33);
         // Without API keys: 22 FREE providers available
-        // (walters + nekosbest disabled due to Cloudflare bot detection)
+        // (walters + nekosbest + github disabled/need auth)
         assert_eq!(stats.available, 22);
-        // 10 providers unavailable: 8 need API keys + walters + nekosbest disabled
-        assert_eq!(stats.unavailable, 10);
+        // 11 providers unavailable: 8 need API keys + walters + nekosbest + github disabled
+        assert_eq!(stats.unavailable, 11);
     }
 
     #[test]

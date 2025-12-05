@@ -1,0 +1,351 @@
+   Compiling dx-media v0.1.0 (F:\Code\media)
+warning: unused import: `serde::de::Error`
+   --> src\providers\cleveland.rs:199:9
+    |
+199 |     use serde::de::Error;
+    |         ^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ResponseExt`
+  --> src\providers\nekosbest.rs:18:31
+   |
+18 | use crate::http::{HttpClient, ResponseExt};
+   |                               ^^^^^^^^^^^
+
+warning: value assigned to `code_lang` is never read
+   --> src\tools\document\markdown.rs:186:13
+    |
+186 |     let mut code_lang = String::new();
+    |             ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `json`
+   --> src\tools\utility\json_format.rs:226:21
+    |
+226 | pub fn extract_path(json: &str, path: &str) -> Result<ToolOutput> {
+    |                     ^^^^ help: if this is intentional, prefix it with an underscore: `_json`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `first_item` is never read
+   --> src\tools\utility\yaml_convert.rs:280:17
+    |
+280 |                 first_item = true;
+    |                 ^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: field `incomplete_results` is never read
+   --> src\providers\github.rs:219:5
+    |
+217 | struct GitHubSearchResponse {
+    |        -------------------- field in this struct
+218 |     total_count: u64,
+219 |     incomplete_results: bool,
+    |     ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `GitHubSearchResponse` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `path`, `url`, `git_url`, and `score` are never read
+   --> src\providers\github.rs:226:5
+    |
+224 | struct GitHubCodeItem {
+    |        -------------- fields in this struct
+225 |     name: String,
+226 |     path: String,
+    |     ^^^^
+227 |     sha: String,
+228 |     url: String,
+    |     ^^^
+229 |     html_url: String,
+230 |     git_url: String,
+    |     ^^^^^^^
+...
+233 |     score: f64,
+    |     ^^^^^
+    |
+    = note: `GitHubCodeItem` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: fields `id`, `name`, `html_url`, `description`, and `stargazers_count` are never read
+   --> src\providers\github.rs:238:5
+    |
+237 | struct GitHubRepository {
+    |        ---------------- fields in this struct
+238 |     id: u64,
+    |     ^^
+239 |     name: String,
+    |     ^^^^
+...
+242 |     html_url: String,
+    |     ^^^^^^^^
+243 |     description: Option<String>,
+    |     ^^^^^^^^^^^
+244 |     #[serde(default)]
+245 |     stargazers_count: u32,
+    |     ^^^^^^^^^^^^^^^^
+    |
+    = note: `GitHubRepository` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: fields `id`, `avatar_url`, and `html_url` are never read
+   --> src\providers\github.rs:251:5
+    |
+249 | struct GitHubOwner {
+    |        ----------- fields in this struct
+250 |     login: String,
+251 |     id: u64,
+    |     ^^
+252 |     avatar_url: String,
+    |     ^^^^^^^^^^
+253 |     html_url: String,
+    |     ^^^^^^^^
+    |
+    = note: `GitHubOwner` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: field `first_publish_year` is never read
+   --> src\providers\openlibrary.rs:166:5
+    |
+161 | struct OpenLibraryDoc {
+    |        -------------- field in this struct
+...
+166 |     first_publish_year: Option<i32>,
+    |     ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `OpenLibraryDoc` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: field `description` is never read
+   --> src\providers\walters.rs:166:5
+    |
+163 | struct WaltersItem {
+    |        ----------- field in this struct
+...
+166 |     description: Option<String>,
+    |     ^^^^^^^^^^^
+    |
+    = note: `WaltersItem` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: fields `year`, `month`, and `day` are never read
+  --> src\providers\xkcd.rs:38:5
+   |
+29 | struct XkcdComic {
+   |        --------- fields in this struct
+...
+38 |     year: String,
+   |     ^^^^
+39 |     #[serde(default)]
+40 |     month: String,
+   |     ^^^^^
+41 |     #[serde(default)]
+42 |     day: String,
+   |     ^^^
+   |
+   = note: `XkcdComic` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: missing documentation for a variant
+  --> src\tools\audio\converter.rs:13:5
+   |
+13 |     Mp3,
+   |     ^^^
+   |
+note: the lint level is defined here
+  --> src\lib.rs:46:9
+   |
+46 | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\audio\converter.rs:14:5
+   |
+14 |     Wav,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> src\tools\audio\converter.rs:15:5
+   |
+15 |     Flac,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\audio\converter.rs:16:5
+   |
+16 |     Ogg,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> src\tools\audio\converter.rs:17:5
+   |
+17 |     Aac,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> src\tools\audio\converter.rs:18:5
+   |
+18 |     M4a,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> src\tools\audio\converter.rs:19:5
+   |
+19 |     Wma,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> src\tools\audio\converter.rs:20:5
+   |
+20 |     Opus,
+   |     ^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\effects.rs:18:12
+   |
+18 |     Echo { delay: f64, decay: f32 },
+   |            ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\effects.rs:18:24
+   |
+18 |     Echo { delay: f64, decay: f32 },
+   |                        ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\effects.rs:20:14
+   |
+20 |     Reverb { room_size: f32, damping: f32 },
+   |              ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\effects.rs:20:30
+   |
+20 |     Reverb { room_size: f32, damping: f32 },
+   |                              ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\effects.rs:26:16
+   |
+26 |     BandPass { low: u32, high: u32 },
+   |                ^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\effects.rs:26:26
+   |
+26 |     BandPass { low: u32, high: u32 },
+   |                          ^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\effects.rs:34:18
+   |
+34 |     Compressor { threshold: f32, ratio: f32 },
+   |                  ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\effects.rs:34:34
+   |
+34 |     Compressor { threshold: f32, ratio: f32 },
+   |                                  ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\splitter.rs:17:9
+   |
+17 |         threshold_db: f32,
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> src\tools\audio\splitter.rs:18:9
+   |
+18 |         min_duration: f64,
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\html_to_pdf.rs:31:5
+   |
+31 |     Portrait,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\html_to_pdf.rs:32:5
+   |
+32 |     Landscape,
+   |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_to_image.rs:14:5
+   |
+14 |     Png,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_to_image.rs:15:5
+   |
+15 |     Jpeg,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_to_image.rs:16:5
+   |
+16 |     Tiff,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_to_image.rs:17:5
+   |
+17 |     Bmp,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_watermark.rs:14:5
+   |
+14 |     Center,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_watermark.rs:15:5
+   |
+15 |     TopLeft,
+   |     ^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_watermark.rs:16:5
+   |
+16 |     TopRight,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_watermark.rs:17:5
+   |
+17 |     BottomLeft,
+   |     ^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_watermark.rs:18:5
+   |
+18 |     BottomRight,
+   |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> src\tools\document\pdf_watermark.rs:19:5
+   |
+19 |     Diagonal,
+   |     ^^^^^^^^
+
+warning: missing documentation for a constant
+  --> src\tools\image\icons.rs:12:1
+   |
+12 | pub const IOS_SIZES: &[u32] = &[57, 60, 72, 76, 114, 120, 144, 152, 167, 180];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a constant
+  --> src\tools\image\icons.rs:13:1
+   |
+13 | pub const ANDROID_SIZES: &[u32] = &[36, 48, 72, 96, 144, 192, 512];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a constant
+  --> src\tools\image\icons.rs:14:1
+   |
+14 | pub const WINDOWS_SIZES: &[u32] = &[70, 150, 310];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `dx-media` (lib) generated 45 warnings (run `cargo fix --lib -p dx-media` to apply 2 suggestions)

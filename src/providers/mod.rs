@@ -19,6 +19,7 @@ mod dicebear; // Unlimited avatar generation
 mod dogceo; // 20K+ dog images
 mod dpla;
 mod europeana;
+mod github; // Data files (JSON, CSV, PDF, Excel)
 mod loc;
 mod loremflickr; // Unlimited Flickr CC photos
 mod met;
@@ -64,6 +65,7 @@ pub use dicebear::DiceBearProvider;
 pub use dogceo::DogCeoProvider;
 pub use dpla::DplaProvider;
 pub use europeana::EuropeanaProvider;
+pub use github::GitHubProvider;
 pub use loc::LibraryOfCongressProvider;
 pub use loremflickr::LoremFlickrProvider;
 pub use met::MetMuseumProvider;
