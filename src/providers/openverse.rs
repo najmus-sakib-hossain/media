@@ -43,10 +43,13 @@ impl OpenverseProvider {
     async fn search_images(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/images/", self.base_url());
 
+        // NOTE: Use format=json to force JSON response
+        // The API's Accept header negotiation is unreliable
         let params = [
             ("q", query.query.as_str()),
             ("page", &query.page.to_string()),
             ("page_size", &query.count.min(500).to_string()),
+            ("format", "json"),
         ];
 
         let response = self.client.get_with_query(&url, &params, &[]).await?;
@@ -91,10 +94,13 @@ impl OpenverseProvider {
     async fn search_audio(&self, query: &SearchQuery) -> Result<SearchResult> {
         let url = format!("{}/audio/", self.base_url());
 
+        // NOTE: Use format=json to force JSON response
+        // The API's Accept header negotiation is unreliable
         let params = [
             ("q", query.query.as_str()),
             ("page", &query.page.to_string()),
             ("page_size", &query.count.min(500).to_string()),
+            ("format", "json"),
         ];
 
         let response = self.client.get_with_query(&url, &params, &[]).await?;
@@ -174,7 +180,7 @@ impl Provider for OpenverseProvider {
     }
 
     fn base_url(&self) -> &'static str {
-        "https://api.openverse.engineering/v1"
+        "https://api.openverse.org/v1"
     }
 
     async fn search(&self, query: &SearchQuery) -> Result<SearchResult> {

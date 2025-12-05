@@ -191,6 +191,11 @@ pub enum MediaTypeArg {
     Gif,
     /// Vector graphics (SVG).
     Vector,
+    /// Documents (PDF, Word, etc).
+    Document,
+    /// 3D models (OBJ, FBX, GLTF).
+    #[value(name = "3d")]
+    Model3D,
     /// All types.
     All,
 }
@@ -203,6 +208,8 @@ impl From<MediaTypeArg> for Option<crate::types::MediaType> {
             MediaTypeArg::Audio => Some(crate::types::MediaType::Audio),
             MediaTypeArg::Gif => Some(crate::types::MediaType::Gif),
             MediaTypeArg::Vector => Some(crate::types::MediaType::Vector),
+            MediaTypeArg::Document => Some(crate::types::MediaType::Document),
+            MediaTypeArg::Model3D => Some(crate::types::MediaType::Model3D),
             MediaTypeArg::All => None,
         }
     }

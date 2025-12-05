@@ -2,7 +2,7 @@
 //!
 //! This module defines the [`Provider`] trait and implementations for various
 //! media asset providers. DX Media supports:
-//! - **20+ FREE providers** (no API keys required) with 1B+ assets
+//! - **25+ FREE providers** (no API keys required) with 1B+ assets
 //! - **7 PREMIUM providers** (optional API keys) with 113M+ additional assets
 //!
 //! Premium providers gracefully degrade - they simply don't appear in searches
@@ -20,8 +20,10 @@ mod dogceo; // 20K+ dog images
 mod dpla;
 mod europeana;
 mod loc;
+mod loremflickr; // Unlimited Flickr CC photos
 mod met;
 mod nasa;
+mod nekosbest; // Anime images and GIFs
 mod openlibrary; // 30M+ book covers
 mod openverse;
 mod picsum;
@@ -29,9 +31,12 @@ mod polyhaven;
 mod randomfox; // Unlimited fox images
 mod rijksmuseum;
 mod robohash; // Unlimited robot avatars
+mod scryfall; // 80K+ MTG cards
 mod vanda; // 1.2M+ V&A Museum items
+mod waifupics; // Anime images and GIFs
 mod walters; // 25K+ Walters artworks
 mod wikimedia;
+mod xkcd; // 2,900+ comics
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PREMIUM PROVIDERS (Optional API Key - Graceful Degradation)
@@ -60,8 +65,10 @@ pub use dogceo::DogCeoProvider;
 pub use dpla::DplaProvider;
 pub use europeana::EuropeanaProvider;
 pub use loc::LibraryOfCongressProvider;
+pub use loremflickr::LoremFlickrProvider;
 pub use met::MetMuseumProvider;
 pub use nasa::NasaImagesProvider;
+pub use nekosbest::NekosBestProvider;
 pub use openlibrary::OpenLibraryProvider;
 pub use openverse::OpenverseProvider;
 pub use picsum::LoremPicsumProvider;
@@ -69,9 +76,12 @@ pub use polyhaven::PolyHavenProvider;
 pub use randomfox::RandomFoxProvider;
 pub use rijksmuseum::RijksmuseumProvider;
 pub use robohash::RoboHashProvider;
+pub use scryfall::ScryfallProvider;
 pub use vanda::VandAMuseumProvider;
+pub use waifupics::WaifuPicsProvider;
 pub use walters::WaltersArtMuseumProvider;
 pub use wikimedia::WikimediaCommonsProvider;
+pub use xkcd::XkcdProvider;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUBLIC EXPORTS - PREMIUM PROVIDERS (Optional API Keys)

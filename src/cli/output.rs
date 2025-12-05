@@ -82,7 +82,11 @@ impl OutputFormatter {
             crate::types::MediaType::Audio => "AUD".yellow(),
             crate::types::MediaType::Gif => "GIF".green(),
             crate::types::MediaType::Vector => "SVG".blue(),
-            _ => "???".dimmed(),
+            crate::types::MediaType::Document => "DOC".bright_yellow(),
+            crate::types::MediaType::Model3D => "3D ".bright_magenta(),
+            crate::types::MediaType::Data => "DAT".bright_blue(),
+            crate::types::MediaType::Code => "COD".bright_green(),
+            crate::types::MediaType::Text => "TXT".white(),
         };
 
         println!(

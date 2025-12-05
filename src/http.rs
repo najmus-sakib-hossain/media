@@ -42,10 +42,11 @@ impl HttpClient {
         max_retries: u32,
         timeout: Duration,
     ) -> Result<Self> {
-        use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, HeaderMap, HeaderValue};
+        use reqwest::header::{ACCEPT_LANGUAGE, HeaderMap, HeaderValue};
         
         let mut headers = HeaderMap::new();
-        headers.insert(ACCEPT, HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"));
+        // NOTE: Don't set Accept header globally - let each request specify it
+        // API providers need application/json while scrapers need text/html
         headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.9"));
         
         // PERFORMANCE OPTIMIZATIONS:
@@ -121,7 +122,13 @@ impl HttpClient {
         self.request_with_retry(|| {
             let mut req = self.client.get(url).query(query);
             for (key, value) in headers {
-                req = req.header(*key, *value);
+                // Convert to HeaderName and HeaderValue for proper handling
+                if let (Ok(name), Ok(val)) = (
+                    reqwest::header::HeaderName::from_bytes(key.as_bytes()),
+                    reqwest::header::HeaderValue::from_str(value),
+                ) {
+                    req = req.header(name, val);
+                }
             }
             req
         })
@@ -135,6 +142,19 @@ impl HttpClient {
     /// Returns an error if the request fails after all retries.
     pub async fn get_raw(&self, url: &str) -> Result<Response> {
         self.request_with_retry(|| self.client.get(url)).await
+    }
+
+    /// Execute a POST request with JSON body.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails after all retries.
+    pub async fn post_json<T: serde::Serialize + ?Sized>(
+        &self,
+        url: &str,
+        body: &T,
+    ) -> Result<Response> {
+        self.request_with_retry(|| self.client.post(url).json(body)).await
     }
 
     /// Execute a request with rate limiting and retry logic.

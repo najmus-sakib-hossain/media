@@ -20,12 +20,16 @@ pub async fn execute(args: ScrapeArgs, format: OutputFormat, quiet: bool) -> Res
         MediaTypeArg::Audio => vec![MediaType::Audio],
         MediaTypeArg::Gif => vec![MediaType::Gif],
         MediaTypeArg::Vector => vec![MediaType::Vector],
+        MediaTypeArg::Document => vec![MediaType::Document],
+        MediaTypeArg::Model3D => vec![MediaType::Model3D],
         MediaTypeArg::All => vec![
             MediaType::Image,
             MediaType::Video,
             MediaType::Audio,
             MediaType::Gif,
             MediaType::Vector,
+            MediaType::Document,
+            MediaType::Model3D,
         ],
     };
 

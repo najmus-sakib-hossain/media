@@ -22,9 +22,11 @@ use crate::providers::{
     GiphyProvider,
     InternetArchiveProvider,
     LibraryOfCongressProvider,
+    LoremFlickrProvider,
     LoremPicsumProvider,
     MetMuseumProvider,
     NasaImagesProvider,
+    NekosBestProvider,
     OpenLibraryProvider,
     OpenverseProvider,
     PexelsProvider,
@@ -33,12 +35,15 @@ use crate::providers::{
     RandomFoxProvider,
     RijksmuseumProvider,
     RoboHashProvider,
+    ScryfallProvider,
     SmithsonianProvider,
     // PREMIUM providers (optional API key - graceful degradation)
     UnsplashProvider,
     VandAMuseumProvider,
+    WaifuPicsProvider,
     WaltersArtMuseumProvider,
     WikimediaCommonsProvider,
+    XkcdProvider,
 };
 use crate::types::{MediaType, SearchQuery, SearchResult};
 
@@ -188,6 +193,34 @@ impl ProviderRegistry {
         // Open Library - 30M+ book covers
         let openlibrary = OpenLibraryProvider::new(config);
         providers.insert(openlibrary.name().to_string(), Arc::new(openlibrary));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 3.7: Anime & GIFs - NO API KEY REQUIRED
+        // ═══════════════════════════════════════════════════════════════════
+
+        // Waifu.pics - Unlimited anime images and GIFs
+        let waifupics = WaifuPicsProvider::new(config);
+        providers.insert(waifupics.name().to_string(), Arc::new(waifupics));
+
+        // Nekos.best - High-quality anime images and GIFs
+        let nekosbest = NekosBestProvider::new(config);
+        providers.insert(nekosbest.name().to_string(), Arc::new(nekosbest));
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TIER 3.8: Cards, Comics & Special - NO API KEY REQUIRED
+        // ═══════════════════════════════════════════════════════════════════
+
+        // Scryfall - 80K+ Magic: The Gathering cards
+        let scryfall = ScryfallProvider::new(config);
+        providers.insert(scryfall.name().to_string(), Arc::new(scryfall));
+
+        // xkcd - 2,900+ webcomics
+        let xkcd = XkcdProvider::new(config);
+        providers.insert(xkcd.name().to_string(), Arc::new(xkcd));
+
+        // LoremFlickr - Unlimited Flickr CC photos by keyword
+        let loremflickr = LoremFlickrProvider::new(config);
+        providers.insert(loremflickr.name().to_string(), Arc::new(loremflickr));
 
         // ═══════════════════════════════════════════════════════════════════
         // TIER 4: PREMIUM Providers - OPTIONAL API KEY (Graceful Degradation)
@@ -464,6 +497,15 @@ mod tests {
         assert!(registry.has_provider("polyhaven"));
         assert!(registry.has_provider("picsum"));
 
+        // Tier 3.7: Anime & GIFs
+        assert!(registry.has_provider("waifupics"));
+        assert!(registry.has_provider("nekosbest"));
+
+        // Tier 3.8: Cards, Comics & Special
+        assert!(registry.has_provider("scryfall"));
+        assert!(registry.has_provider("xkcd"));
+        assert!(registry.has_provider("loremflickr"));
+
         // PREMIUM providers (registered but not available without API keys)
         assert!(registry.has_provider("unsplash"));
         assert!(registry.has_provider("pexels"));
@@ -482,13 +524,13 @@ mod tests {
         let registry = ProviderRegistry::new(&config);
 
         let stats = registry.stats();
-        // Total: 19 FREE + 8 PREMIUM = 27 providers
-        assert_eq!(stats.total, 27);
-        // Without API keys: 18 FREE providers available
-        // (walters disabled due to Cloudflare)
-        assert_eq!(stats.available, 18);
-        // 9 providers unavailable: 8 need API keys + walters disabled
-        assert_eq!(stats.unavailable, 9);
+        // Total: 24 FREE + 8 PREMIUM = 32 providers
+        assert_eq!(stats.total, 32);
+        // Without API keys: 22 FREE providers available
+        // (walters + nekosbest disabled due to Cloudflare bot detection)
+        assert_eq!(stats.available, 22);
+        // 10 providers unavailable: 8 need API keys + walters + nekosbest disabled
+        assert_eq!(stats.unavailable, 10);
     }
 
     #[test]
